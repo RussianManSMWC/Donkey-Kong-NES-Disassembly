@@ -2573,7 +2573,7 @@ CODE_D02A:
 JSR CODE_D032					;does something with score, as well?
 PLA                      
 TAY                      
-PLA						;X is modified so we don't have to transfer back (why was it pushed in the first place is everyone's guess)
+PLA						;
 TAX
 RTS 
 
@@ -2855,8 +2855,6 @@ STA Jumpman_State				;
 
 RETURN_D199:
 RTS						;
-
-;one byte is missing from here ^
 
 ;disable rendering
 ;DisableRender_D19A:
