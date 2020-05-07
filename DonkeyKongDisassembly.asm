@@ -356,6 +356,7 @@ db $04,$01,$1B,$0E
 DATA_C2C8:
 db $00,$01,$12,$01
 
+;OAM slots for moving platforms from phase 2 (75M) (maybe used by other entities?)
 DATA_C2CC:
 db $30,$38,$40,$48,$50,$58              
 
@@ -503,6 +504,7 @@ db $BB,$BB,$5E,$2F,$13
 DATA_C457:
 db $88,$78,$64,$56,$49
 
+;two nearly indentical tables related with timing of sprite processing (compared bitwise)
 DATA_C45C:
 db $88,$88,$24,$55,$55
 
@@ -1594,9 +1596,9 @@ JSR CODE_CC47
 RTS                      
 
 CODE_CB02:
-LDX $52                  
-LDA $53
-CMP $0400,X              
+LDX Players_CurrentPlayer			;load current pplayer in play
+LDA $53						;check current phase
+CMP $0400,X					;versus where player's supposed to go (?)
 BEQ CODE_CB15                
 CMP #$01                 
 BEQ CODE_CB15
@@ -1614,9 +1616,9 @@ CODE_CB1B:
 if Version = JP
 CMP #$7A					;more different checks, except this time different code is also included
 BEQ JP_CODE_CB28                
-CMP #$75                 
-BEQ JP_CODE_CB30                
-CMP #$74                 
+CMP #$75
+BEQ JP_CODE_CB30
+CMP #$74
 BEQ JP_CODE_CB4C                
 RTS                      
 
@@ -2335,20 +2337,21 @@ JSR CODE_EA5F
 JSR CODE_E1E5
 JSR CODE_EE79
  
+;handle different hazards depending on phase
 LDA PhaseNo
-CMP #$03                 
-BEQ CODE_CF01                
-CMP #$04                 
+CMP #Phase_75M			;handle springboards in phase 2
+BEQ CODE_CF01
+CMP #Phase_100M			;handle following fires in phase 3 
 BEQ CODE_CF0D
 
-JSR CODE_DA16                
+JSR CODE_DA16			;barrels of phase 1   
 JSR CODE_E19A                
 JSR CODE_EC29
 JMP CODE_CF1C
   
 CODE_CF01:
-JSR CODE_E834                
-JSR CODE_E981                
+JSR CODE_E834			;handle platform lifts
+JSR CODE_E981                 
 JSR CODE_EC29                
 JMP CODE_CF1C
   
@@ -5480,30 +5483,32 @@ CODE_DFE4:
 STA $0A						;
 STA $0B						;
 
+;sprite-related (various objects, like barrels, platforms, etc.)
+;(seems to be movement related as it loads some values from before that are based on difficulty)
 CODE_DFE8:
-LDX $5D						;current barrel index?
-INC $8A,X					;
+LDX $5D					;
+INC $8A,X					;timer
 
-LDA $8A,X                
-BMI CODE_DFF7                
-CMP #$10
-BCS CODE_DFF7
-JMP CODE_DFFB
+LDA $8A,X					;if negative (for whatever reason)
+BMI CODE_DFF7					;reset
+CMP #$10					;if 16, reset and do a thing
+BCS CODE_DFF7					;
+JMP CODE_DFFB					;
 
 CODE_DFF7:
 LDA #$00
 STA $8A,x
 
 CODE_DFFB:
-CMP #$08                 
-BCS CODE_E008                
-TAX                      
-LDA DATA_C1BC,X              
-AND $0A                  
-JMP CODE_E011
+CMP #$08					;check if more than 8
+BCS CODE_E008					;then substract
+TAX						;
+LDA DATA_C1BC,X					;bits
+AND $0A						;
+JMP CODE_E011					;
   
 CODE_E008:
-SEC                      
+SEC
 SBC #$08                 
 TAX                      
 LDA DATA_C1BC,X              
@@ -5511,18 +5516,18 @@ AND $0B
   
 CODE_E011:
 If Version = JP
-BEQ JP_CODE_E016
+  BEQ JP_CODE_E016
 else
-BEQ RETURN_E015
+  BEQ RETURN_E015
 endif
 
 LDA #$01
 
 If Version = JP
 JP_CODE_E016:
-STA $0C
+  STA $0C
 
-LDA $0C
+  LDA $0C
 endif
 
 RETURN_E015:
@@ -7042,109 +7047,99 @@ AND $0B
 
 CODE_E82F:
 If Version = JP
-BEQ JP_CODE_E848
+  BEQ JP_CODE_E848
 else
-BEQ RETURN_E833
+  BEQ RETURN_E833
 endif
 
 LDA #$01
 
 If Version = JP
 JP_CODE_E848:
-STA $0C						;another unecessary store
+  STA $0C						;another unecessary store
 endif
 
 RETURN_E833:
 RTS
 
+;moving lifts (75M only)
 CODE_E834:
-JSR CODE_EAF7
-
-LDA DATA_C45C,X              
+JSR CODE_EAF7					;get speed index
+LDA DATA_C45C,X
 STA $0A
-
-LDA DATA_C461,X              
+LDA DATA_C461,X
 STA $0B
-
-LDA #$00                 
-STA $5D
-JSR CODE_DFE8                
-BNE CODE_E84B                
-RTS
-
+LDA #$00					;only one check
+STA $5D						;
+JSR CODE_DFE8					;check if it should run platforms code
+BNE CODE_E84B					;every some frames
+RTS						;
+;move lifts
 CODE_E84B:
-LDA #$00                 
-STA $D2
-
+LDA #$00					;moving platform index
+STA $D2						;
 LOOP_E84F:
-LDA $D2                  
-CMP #$03                 
-BCS CODE_E8A9                
-TAX                      
-BNE CODE_E86A
+LDA $D2						;if we moved first three platforms
+CMP #$03					;next three, which move up
+BCS CODE_E8A9					;
+TAX						;
+BNE CODE_E86A					;
+LDA $DA						;if platform isn't being stood on
+CMP #$01					;
+BNE CODE_E86A					;don't move jumpman
+DEC $0200					;\move jumpman down (sprite tiles Y-pos) 
+DEC $0204					;|
+DEC $0208					;|
+DEC $020C					;/
 
-LDA $DA                  
-CMP #$01                 
-BNE CODE_E86A
-
-DEC $0200                
-DEC $0204                
-DEC $0208                
-DEC $020C
-  
 CODE_E86A:
-LDY DATA_C2CC,X              
-LDA $0200,Y              
-CMP #$FF                 
-BEQ CODE_E8A4                
-TYA                      
-TAX                      
-DEC $0200,X              
-DEC $0204,X
-
-LDA $0200,X
-CMP #$50                 
-BNE CODE_E889
-
-JSR CODE_E968                
-JMP CODE_E890
+LDY DATA_C2CC,X					;get proper OAM slot for each platform 
+LDA $0200,Y					;
+CMP #$FF					;
+BEQ CODE_E8A4					;if offscreen, next platform
+TYA						;convert Y into X
+TAX						;
+DEC $0200,X					;No DEC $XXXX,y
+DEC $0204,X					;
+LDA $0200,X					;if not at this height, check different Y-position
+CMP #$50					;
+BNE CODE_E889					;
+JSR CODE_E968					;enable priority
+JMP CODE_E890					;check different Y-pos (but it's pointless since we're here from $50)
   
 CODE_E889:
-CMP #$C8                 
-BNE CODE_E890
-JSR CODE_E971
+CMP #$C8					;if it appears from the bottom, disable priority
+BNE CODE_E890					;
+JSR CODE_E971					;disable priority
   
 CODE_E890:
-LDA $0200,Y              
-CMP #$70                 
-BNE CODE_E89B
-
-LDA #$01                 
-STA $D8
+LDA $0200,Y					;if low enough... again?
+CMP #$70					;
+BNE CODE_E89B					;
+LDA #$01					;some kind of flag (remove sprite, i think)
+STA $D8						;
   
 CODE_E89B:
-LDA $0200,Y              
-CMP #$48                 
-BEQ CODE_E901                
-BCC CODE_E901
+LDA $0200,Y					;remove sprite if low enough
+CMP #$48					;
+BEQ CODE_E901					;
+BCC CODE_E901					;
   
 CODE_E8A4:
-INC $D2                  
-JMP LOOP_E84F
-
+INC $D2						;next platoform sprite
+JMP LOOP_E84F					;
 CODE_E8A9:
-CMP #$06                 
-BEQ CODE_E90E                
-TAX                      
-CMP #$03                 
+CMP #$06					;if gone through all platoforms, wrap it up
+BEQ CODE_E90E					;
+TAX
+CMP #$03
 BNE CODE_E8C4
-
-LDA $DA                  
-CMP #$02                 
+LDA $DA
+CMP #$02
 BNE CODE_E8C4
   
-INC $0200                
-INC $0204                
+INC $0200     
+INC $0204   
 INC $0208                
 INC $020C
   
@@ -7153,11 +7148,10 @@ LDY DATA_C2CC,X
 LDA $0200,Y              
 CMP #$FF                 
 BEQ CODE_E8FC                
-TYA                      
-TAX                      
+TYA 
+TAX
 INC $0200,X              
 INC $0204,X
-
 LDA $0200,X              
 CMP #$50                 
 BNE CODE_E8E3
@@ -7174,7 +7168,6 @@ CODE_E8EA:
 LDA $0200,Y              
 CMP #$A8                 
 BNE CODE_E8F8
-
 LDA #$01                 
 STA $D9                  
   
@@ -7192,13 +7185,12 @@ CODE_E901:
 LDA #$FF                 
 STA $0200,Y              
 STA $0204,Y
-
 INC $D2                  
 JMP LOOP_E84F
   
 CODE_E90E:
-LDA $D8                  
-CMP #$01                 
+LDA $D8					;check this flag (whatever it does)
+CMP #$01				;
 BNE CODE_E93B
 
 LDA #$00                 
@@ -7559,27 +7551,27 @@ LDA $0200,X
 STA $01                  
 RTS                      
 
+;get speed index for various objects, to make it more difficult for the player
 CODE_EAF7:
-LDA $50                  
-AND #$01                 
-CLC                      
-ADC $54                  
-TAX                      
-CPX #$04                 
-BCC RETURN_EB05
+LDA GameMode					;check for Game B
+AND #$01					;
+CLC						;
+ADC LoopCount					;and add loop counter
+TAX						;
+CPX #$04					;
+BCC RETURN_EB05					;if it's more than 4, limit
   
-LDX #$04
+LDX #$04					;maximus of speed values for lifts
   
 RETURN_EB05:
-RTS
-
+RTS						;
 CODE_EB06:
-LDA $0503				;since this is always set to 1, it feels pointless
-BNE CODE_EB0C				;
-RTS					;since it's always 1, this can't be triggered
+LDA $0503					;since this is always set to 1, it feels pointless
+BNE CODE_EB0C					;
+RTS						;since it's always 1, this can't be triggered
 
 CODE_EB0C:
-LDA $0505				;some bits...
+LDA $0505					;some bits...
 AND #$0F                 
 STA $0505
 
