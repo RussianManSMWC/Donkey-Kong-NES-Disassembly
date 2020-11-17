@@ -18,17 +18,21 @@ ControllerInput_Player2Previous = $17		;/
 
 RNG_Value = $18					;8 bytes (18-1F)
 
-ScoreDisplay_Top = $21				;\3 bytes, decimal (21-23)
+ScoreDisplay_Top = $21				;\3 bytes, decimal (21-23).
 ScoreDisplay_Player1 = $25			;|(25-27)
 ScoreDisplay_Player2 = $29			;/(29-2B)
+ScoreDisplay_CurPlayer = $25			;for current player, contains both player1 and player 2 (offset by X)
 ScoreDisplay_Bonus = $2E			;2 bytes, decimal, also acts as timer
+Score_Top = $0507				;4 bytes, contains top score for game A and B, to be displayed when starting a level. doesn't take tens and ones into account.
 
 Players = $51					;$18 - 1 player, $1C - 2 players
 Players_CurrentPlayer = $52			;who's currently in play
+ReceivedLife_Flag = $0408			;2 bytes for each player, if true, don't give player extra lives anymore.
 
 Timer_Timing = $34				;used to decrease other timers, probably has other uses
 Timer_Global = $35				;16 bytes ($35-$45), specific timers listed below. $35-$3D decrease every frame, the rest decreases every 10 frames
 ;Timer_KongAnimation = $34			;
+Timer_KongSpawn = $36				;timer for donkey kong to spawn an entity (barrel or springboard)
 Timer_Hammer = $3F				;timer for hammer power
 Timer_Transition = $43				;common timer used for changing game states, like game over, phase init, etc. (sorta timer though it's strangely handled)
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts.
@@ -36,6 +40,7 @@ Timer_BonusScoreDecrease = $45			;timer that decreases bonus score by 100.
 
 TitleScreen_Flag = $4E				;if we're on title screen
 TitleScreen_MainCodeFlag = $0510		;init/main flag. 0 - init, 1 - main
+TitleScreen_SelectHeldFlag = $0512		;used to tell if select was pressed so it's not possible to switch options every frame (stays active if select is being held) (also counts up and down in gamecube version)
 
 ;related with platforms
 Platform_HeightIndex = $59			;how high player is by platform. 1st platform is the lowest and etc.
@@ -45,17 +50,26 @@ Jumpman_OnPlatformFlag = $5A			;set when jumpman's standing on the platform. res
 PhaseNo = $53
 
 GameControlFlag = $4F				;
+GameMode = $50					;bit 0 - Game A or B, bit 1 - 1 player or 2 players
+
+LoopCount = $54					;number of times 100M was completed
+LoopCount_PerPlayer = $0402			;2 bytes, contains loop count for each player
 
 Kong_DefeatedFlag = $9A				;sometimes set and reset immideatly when completing phase but phase 3. stops normal gameplay functions just like GameControlFlag
 Kong_AnimationFlag = $0503			;if set, kong will play animations, but it's always set to 1, so he always play animations.
+
 
 ;hold directional inputs
 Direction = $56					;saves directional input
 Direction_Horz = $57				;only saves left and right directional inputs
 
 ;Player character addressses
+Jumpman_XPos = $46				;doesn't represent actual X-pos, it's used for various checks. it's a copy of jumpman's top-right OAM slot X-pos.
+Jumpman_YPos = $47				;same as above
+Jumpman_XPosRange = $48				;used for ladder detection. it's the same  value as in Jumpman_XPos, + 4
 Jumpman_Lives = $55
 Jumpman_State = $96				;$01 - grounded, $02 - on ladder, $04 - Jumping, $08 - Falling, $0A - Has a hammer, $FF - Dead
+Jumpman_Death_FlipTimer = $98			;timer for flipping death animation. when set to FF, show actual death frame.
 ;Jumpman_XPos = $48				;maybe this one is actually the true one, but IDK
 ;Jumpman_XPos = $A1
 Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
@@ -65,17 +79,19 @@ Hammer_DestroyingEnemy = $BF			;flag that deternimes whether we're destoying a h
 
 ;$0500 - Unused
 
+Cursor_YPosition = $0511
+
 Demo_Active = $58				;demo is active flag.
 Demo_InitFlag = $050B				;true - has been initialized, false - do init
 Demo_InputTimer = $050C				;how long input/command will last
 Demo_Input = $050D				;what input (button/command) is processed
 Demo_InputIndex = $050E				;index of current input
 
-Cursor_YPosition = $0511
-
+Pause_HeldPressed = $0514			;this address reacts to pause being pressed/held but can also hold directional inputs (as long as pause is held). used to prevent pause switching every frame when pause is held.
 Pause_Flag = $0516				;flag to indicate if game is paused
 Pause_Timer = $0517				;timer for pausing and unpausing
 
+;Sound addressess
 Sound_MusicDataPointer = $F7			;2 bytes, indirect addressing
 Sound_Music = $FC
 Sound_MusicPauseBackup = $0F			;used for pausing to disable music but keep it safe ($FC)
@@ -83,6 +99,24 @@ Sound_MusicHammerBackup = $0519			;used to save music value that played before p
 Sound_Fanfare = $FD				;holds value for various jingles and sound effects, like title screen theme, score, pause and etc.
 Sound_Effect = $FE
 Sound_Effect2 = $FF
+
+;OAM base ram addresses
+OAM_Y = $0200
+OAM_Tile = $0201
+OAM_Prop = $0202
+OAM_X = $0203
+
+;OAM addresses for various objects
+Cursor_OAM_Y = OAM_Y+(4*Cursor_OAM_Slot)
+Cursor_OAM_Tile = OAM_Tile+(4*Cursor_OAM_Slot)
+Cursor_OAM_Prop = OAM_Prop+(4*Cursor_OAM_Slot)
+Cursor_OAM_X = OAM_X+(4*Cursor_OAM_Slot)
+
+BufferOffset = $0330				;used to offset buffer position
+BufferAddr = $0331				;buffer for tile updates (62 bytes)
+
+;RAM addresses that are "used" but do nothing.
+Unused_0513 = $0513				;similar address is used in Donkey Kong Jr. NES port.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;NES Hardware Registers
@@ -98,6 +132,7 @@ DrawRegister = $2007				;used to draw tiles, change palettes and attributes
 
 OAMDMA = $4014					;upload $100 bytes
 
+APU_SoundChannels = $4015			;needs confirmation though.
 ControllerReg = $4016				;$4016 - First controller, $4017 - Second controller
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -107,6 +142,14 @@ ControllerReg = $4016				;$4016 - First controller, $4017 - Second controller
 VRAMWriteCommand_Repeat = $40   		;bit 6 will make repeat writes of one value
 VRAMWriteCommand_DrawVert = $80			;bit 7 - change drawing from horizontal line to vertical
 VRAMWriteCommand_Stop = $00     		;command to stop VRAM write and return from routine.
+
+;Various background tile defines
+Tile_Empty = $24				;standart empty tile (transperant).
+Tile_Roman_I = $66				;\a pair or roman numbers used as player number
+Tile_Roman_II = $67				;/for "PLAYER X" screen and status bar
+
+;various VRAM tile locations
+VRAMLoc_LivesCount = $20B5
 
 ;controller input constants
 Input_A = $80
@@ -129,6 +172,9 @@ Jumpman_State_Falling = $08
 Jumpman_State_Hammer = $0A
 Jumpman_State_Dead = $FF
 
+;Barrel state values
+Barrel_Initialized = $80
+
 ;Phase values. Technically speaking title screen is $00 but it's not checked, so...
 Phase_25M = $01
 ;50M is not present, so $02 isn't used
@@ -140,8 +186,8 @@ Players_2Players = $1C
 
 ;$FC
 Sound_Music_Silence = $00
-Sound_Music_25M = $01
-;$02, $04 and $08 are duplicates of 25M
+Sound_Music_25M = $02
+;$01, $04 and $08 are duplicates of 25M
 Sound_Music_100M = $10
 Sound_Music_HurryUp = $20
 Sound_Music_Hammer = $40
@@ -161,7 +207,7 @@ Sound_Fanfare_TitleScreenTheme = $80
 Sound_Effect_SpringFall = $01			;\only can play in phase 2 (75M) (or during pause via hacking)
 Sound_Effect_SpringBounce = $02			;/
 ;Bits 2-6 are unused
-Sound_Effect_DonkeyKongHit = $80		;chest hit sound
+Sound_Effect_Hit = $80				;donkey kong chest hit sound and plays when dying
 
 ;$FF
 Sound_Effect2_Dead = $01
@@ -169,6 +215,12 @@ Sound_Effect2_EnemyDestruct = $02
 Sound_Effect2_Jump = $04
 Sound_Effect2_Movement = $08
 ;other bits are unused
+
+;Various OAM props, fixed positions and tiles grouped together
+Cursor_OAM_Slot = 0				;for title screen
+Cursor_Tile = $A2
+Cursor_XPos = $38
+Cursor_Prop = $00
 
 ;version defines, don't touch
 JP = 0

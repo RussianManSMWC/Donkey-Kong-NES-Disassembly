@@ -14,4 +14,9 @@ JP - revision 0/japan only
 Gamecube - gamecube only
 
 There's no consistency in referring to revision 0 and 1. Sometimes i call them JP and US. Not sure which is correct. I might change it later.
-Also, I refer to player character who would become the world's most famous plumber as Jumpman, just for authencity. All references to Jumpman can be referred to Mario.
+Also, I refer to player character who would become the world's most famous plumber as Jumpman, just for authencity. All references to Jumpman can be replaced with references to Mario.
+
+Terminology:
+Sprite Tiles - OAM tiles
+Sprite - an object, usually uses sprite tiles (donkey kong himself isn't a sprite for example, since he uses background tiles (exception: ending cutscene where he turns into a sprite when falling down))
+ 

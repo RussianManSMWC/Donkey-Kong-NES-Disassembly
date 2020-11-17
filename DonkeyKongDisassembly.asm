@@ -5,7 +5,7 @@
 ;-Gamecube (from Animal Crossing)
 ;Disassembled By RussianManSMWC. Does not include Graphic data - you have to rip it yourself.
 ;To be compiled with ASM6
-;Personal note - this code is a mess.
+;Personal note - the code is an absolute spaghetti mess. Mmm... spaghetti.
 
 ;Set version with this define. Use one of the following arguments
 ;JP
@@ -52,7 +52,7 @@ Gamecube_CODE_BFF0:
   AND #$08					;check for Up button - go from first option to last
   ASL A						;
   ASL A						;
-  ADC $0200					;
+  ADC Cursor_OAM_Y				;
   RTS
 
   FILLVALUE $00					;the rest is $00
@@ -65,7 +65,7 @@ FILLVALUE $FF					;original game's free space is marked with FFs
 ;big table block
 ;TO DO: Figure out if some of these unused tables are actually used (at least in theory)
 
-;Tile VRAM location for scores
+;Tile VRAM location for scores (the last byte for each entry is some kind of properties that are unused. only bits 0 and 4)
 DATA_C000:
 db $20,$70,$06,$00				;TOP
 db $20,$64,$06,$00				;Player 1
@@ -135,7 +135,8 @@ dw DATA_C71C
 dw DATA_C735
 dw DATA_C74E
 
-;Also something
+;Also something (Phase 1 only?)
+DATA_C056:
 dw DATA_C08C
 dw DATA_C0CF 
 dw DATA_C161
@@ -269,6 +270,7 @@ db $10,$E0
 DATA_C1B8:
 db $0C,$E0,$08,$E8
 
+;tabel representing each bit value
 DATA_C1BC:
 db $01,$02,$04,$08,$10,$20,$40,$80
 
@@ -489,6 +491,7 @@ db $00,$00,$10,$08
 DATA_C43B:
 db $00,$00,$60,$10,$00,$00,$2A,$20
 
+;table used for barrel throw timer setting (based on difficulty)
 CODE_C443:
 db $B0,$A0,$78,$68,$68
 
@@ -781,11 +784,25 @@ db $A3,$B9,$69,$BA,$A7,$BB,$A9,$AA
 db $BC,$BD,$BE,$BF,$C0,$C1,$24,$B1
 db $13,$2C,$16,$13,$13,$16,$30,$37
 
+;data for "Player X" screen.
 DATA_C6AA:
-db $23,$DB,$42,$A0,$21,$CA,$4C,$24
-db $21,$EA,$0C,$24,$24,$19,$15,$0A
-db $22,$0E,$1B,$24,$66,$24,$24,$00
+db $23,$DB				;set up attributes
+db $02|VRAMWriteCommand_Repeat
+db $A0
 
+db $21,$CA
+db $0C|VRAMWriteCommand_Repeat
+db $24
+
+db $21,$EA
+db $0C
+;"  PLAYER I  " (I is replaced with II (tile 67) if second player, obviously
+db $24,$24,$19,$15,$0A,$22,$0E,$1B
+db $24,$66,$24,$24
+
+db VRAMWriteCommand_Stop
+
+;data for "GAME OVER" message
 DATA_C6C2:
 db $23,$E2,$04,$08,$0A,$0A,$02,$22
 db $0A,$4C,$24,$22,$2A,$0C,$24,$10
@@ -1142,7 +1159,7 @@ JSR CODE_F228					;draw tiles
 
 LDA #$00					;
 STA $0330					;reset update index
-STA $0331					;reset "HUD" update flag
+STA $0331					;reset update flag
 JSR CODE_F50E					;read controller
 
 LDA RenderMirror				;
@@ -1157,25 +1174,25 @@ BNE CODE_C8C1					;do title screen-y things
 LDA GameControlFlag				;check if game isn't controllable yet
 BEQ CODE_C8D4					;
  
-LDA Kong_DefeatedFlag				;
+LDA Kong_DefeatedFlag				;run kong defeat scene
 BNE CODE_C8A5					;
 
 JSR CODE_CE7C					;run normal gameplay
 JMP CODE_C8D7					;
 
 CODE_C8A5:
-LDA $044F					;check if 
-CMP #$08
-BNE CODE_C8D4
+LDA $044F					;another check (animate kong for a bit before displaying sprite?)
+CMP #$08					;
+BNE CODE_C8D4					;
 
-JSR CODE_CCF4
+JSR CODE_CCF4					;falldown
 
-LDA $43                  
+LDA $43						;check if the scene has ended
 BNE CODE_C8D7
 
-LDA #$00                 
-STA $044F                
-STA $4F
+LDA #$00					;
+STA $044F					;some flag
+STA GameControlFlag				;resume normal play
 
 LDA #$79
 STA $43
@@ -1196,15 +1213,15 @@ CODE_C8D4:
 JSR CODE_CAC9
 
 CODE_C8D7:  
-LDA $0505                
-CMP #$01                 
-BNE CODE_C8E8
+LDA $0505					;check if this is set to 1
+CMP #$01					;
+BNE CODE_C8E8					;
 
-LDA Players
-STA $00                  
-JSR CODE_F23C
+LDA Players					;\update score
+STA $00						;|
+JSR CODE_F23C					;/
 
-DEC $0505					;decrease some kind of timer?
+DEC $0505					;- 1 = 0 (don't trigger above check)
   
 CODE_C8E8:
 LDA $10						;re-enable NMI
@@ -1232,7 +1249,7 @@ STA $0518					;
 
 LDA #$0F					;enable all sound channels
 STA $4015					;
-STA $0100					;backup
+STA $0100					;backup (at the end of stack btw)
   
 CODE_C914:
 LDA TitleScreen_MainCodeFlag			;check if we've initialized title screen
@@ -1245,17 +1262,17 @@ JSR CODE_C807					;draw title screen
 
 ;set cursor sprite for title screen
 LDA Cursor_YPosition				;Y-position
-STA $0200
+STA Cursor_OAM_Y				;
 
-LDA #$A2					;sprite tile
-STA $0201					;
+LDA #Cursor_Tile				;sprite tile
+STA Cursor_OAM_Tile				;
 
-LDA #$00					;property
-STA $0202					;
+LDA #Cursor_Prop				;property
+STA Cursor_OAM_Prop				;
 STA Demo_Active					;demo isn't active
 
-LDA #$38					;
-STA $0203					;X-pos
+LDA #Cursor_XPos				;
+STA Cursor_OAM_X				;X-pos
 STA TitleScreen_MainCodeFlag			;any non-zero value is fine
 
 LDA #$20                 			;set pre-demo timer
@@ -1276,63 +1293,63 @@ AND #Input_Start				;
 BNE CODE_C98A					;check for the start button
   
 LDA #$00					;
-STA $0512					;
+STA TitleScreen_SelectHeldFlag			;if no button is pressed/held, reset select held flag
 
-LDA $44						;if timer for demo is still active
+LDA Timer_Demo					;if timer for demo is still active
 BNE RETURN_C95C					;don't activate demo mode
 
-LDA #$01					;
+LDA #$01					;activate demo mode
 STA Demo_Active					;
 JMP CODE_C9B1					;
 
 RETURN_C95C:
-RTS
+RTS						;
   
 CODE_C95D:
-LDA #$40                 
-STA $44
- 
-LDA $0512                
-BNE CODE_C985
+LDA #$40					;set timer before demo if pressed/held a button that switches option
+STA Timer_Demo					;
 
-LDA #$40                 
-STA $35
+LDA TitleScreen_SelectHeldFlag			;if select is being held, don't switch anymore
+BNE CODE_C985					;
+
+LDA #$40					;
+STA $35						;
 
 If Version = Gamecube
   JSR Gamecube_CODE_BFF0			;make cursor loop from first option to last (since we can use D-pad now)
 else
-  LDA $0200
+  LDA Cursor_OAM_Y				;
 endif
-CLC                      
-ADC #$10                 
+CLC						;
+ADC #$10					;
 CMP #$BF					;check if changed option after last (or first on gamecube) (wrap around)
 If Version = Gamecube
-  BCC CODE_C976
+  BCC CODE_C976					;
   SBC #$40					;either first or last
 else
-  BNE CODE_C976
+  BNE CODE_C976					;
   LDA #$7F					;first option location
 endif
 
 CODE_C976:
-STA $0200
-STA $0511
+STA Cursor_OAM_Y				;
+STA Cursor_YPosition				;change cursor's Y-pos
 
-INC $0512					;timer? for demo?
+INC TitleScreen_SelectHeldFlag			;hold select flag used if select is held so it doesn't switch options every frame but every button PRESS
 
-LDA #$0A
-STA $0513
-RTS
+LDA #$0A					;Ram address that does... absolutely nothing.
+STA Unused_0513					;in DK JR (for the NES) similar address is set as a timer for switching options if select is held long enough (Japan only)
+RTS						;
 
 CODE_C985:
-LDA $35						;     
-BNE RETURN_C989					;wait a minute... what? this check makes no sense!
+LDA $35						;wait a minute... what? this check makes no sense!     
+BNE RETURN_C989					;however, DK JR gives us a clue on what this supposed to be. this timer was used for option switching when select was held (so it'd continiously switch when this timer was zero). It'd use timer for option switching that is unused for this game (it's Unused_0513). 
 
 RETURN_C989:
 RTS						;
 
 CODE_C98A:
-STA $0514					;
+STA Pause_HeldPressed				;
 
 LDX #$0A					;reset score  
 LDA #$00					;
@@ -1383,22 +1400,22 @@ STA TitleScreen_Flag				;not in title screen anymore
 STA $0406					;
 STA $0407					;
 STA GameControlFlag				;can't control yet
-STA $0510                
+STA TitleScreen_MainCodeFlag			;initialize title screen next time we get there
 STA $050B
 STA $0512
 
 LDA #$01                 
 STA PhaseNo					;start from 25M
-STA $0400
-STA $0401
+STA $0400					;initialize  both player's phase number
+STA $0401					;
 
 LDA #$00
-STA $54                  
+STA LoopCount					;initialize loop counter
 STA $0402                
 STA $0403
 
 LDA #$00					;but we had 00 loaded before... and before before.
-STA $52						;
+STA Players_CurrentPlayer			;
 STA $0408					;
 STA $0409					;
 STA Sound_Music					;
@@ -1448,7 +1465,7 @@ BEQ CODE_CA5A
 CMP #$74
 BEQ CODE_CA5F
 CMP #$73
-BEQ CODE_CA64  
+BEQ CODE_CA64
 CMP #$5F
 BEQ CODE_CA79
 RTS
@@ -1466,26 +1483,26 @@ JSR CODE_CBAE
 RTS                      
 
 CODE_CA5A:
-DEC Timer_Transition
+DEC Timer_Transition				;
 JMP CODE_CBAE
   
 CODE_CA5F:
-DEC $43                  
+DEC Timer_Transition
 JMP CODE_CBCA
 
 CODE_CA64:  
-DEC $43
+DEC Timer_Transition				;
 
-LDA $50                  
-AND #$01                 
-ASL A                    
-TAX                      
+LDA GameMode					;preserve top score
+AND #$01					;
+ASL A						;
+TAX						;
 LDA ScoreDisplay_Top
-STA $0507,X
+STA Score_Top,X					;store top score for game A or B
 
-LDA ScoreDisplay_Top+1
-STA $0508,X              
-JMP CODE_CBF5
+LDA ScoreDisplay_Top+1				;
+STA Score_Top+1,X				;
+JMP CODE_CBF5					;reset kong frame (phase 1 only?)
   
 CODE_CA79:
 LDX $52
@@ -1504,8 +1521,8 @@ LDA $0406,X
 STA $4E                  
 BEQ CODE_CA99
 
-CODE_CA94:  
-STA $55                  
+CODE_CA94:
+STA $55
 JMP CODE_CA53
   
 CODE_CA99:
@@ -1597,16 +1614,17 @@ RTS
 
 CODE_CB02:
 LDX Players_CurrentPlayer			;load current pplayer in play
-LDA $53						;check current phase
+LDA PhaseNo					;check current phase
 CMP $0400,X					;versus where player's supposed to go (?)
-BEQ CODE_CB15                
+BEQ CODE_CB15
 CMP #$01                 
 BEQ CODE_CB15
-JSR CODE_CC24                
+
+JSR CODE_CC24 					;must be score related              
 JSR CODE_CC04
   
 CODE_CB15:
-DEC $43                  
+DEC $43						;decrease transiition timer
 RTS
 
 CODE_CB18:  
@@ -1770,33 +1788,34 @@ JSR CODE_D19A					;no rendering
 JMP CODE_F1B4					;clear screen
 
 CODE_CBBD:
-LDA #$B5                 
+LDA #<VRAMLoc_LivesCount			;set VRAM location to where lives count is
 STA $00
    
-LDA #$20 
+LDA #>VRAMLoc_LivesCount
 STA $01
   
-LDY $55
-JMP CODE_F4C2
+LDY Jumpman_Lives				;set lives number as tile value
+JMP CODE_F4C2					;
 
+;show "PLAYER X" screen where X is the player's number (player 1 or Player 2)
 JP_CODE_CBC6:
 CODE_CBCA:             
-LDA $58                  
+LDA Demo_Active					;if demo mode is active, don't show game over
 BNE RETURN_CBF4
 
-LDA $51                  
-CMP #$1C                 
-BNE RETURN_CBF4
+LDA Players					;if the game is in 2 player mode
+CMP #Players_2Players				;
+BNE RETURN_CBF4					;if so, don't show normal game over message (should show which player has game over)
 
-LDX $52
-LDA $53                  
+LDX Players_CurrentPlayer			;not sure what's the point of this, but...
+LDA PhaseNo  
 CMP $0400,X              
 BNE RETURN_CBF4
 
 LDY #$00
 
 LOOP_CBDF:
-LDA DATA_C6AA,Y
+LDA DATA_C6AA,Y			;set 
 STA $0331,Y
 BEQ CODE_CBEB                
 INY                      
@@ -1816,8 +1835,8 @@ CODE_CBF5:
 LDY #$00
 
 LOOP_CBF7:
-LDA DATA_C6C2,Y
-STA $0331,Y              
+LDA DATA_C6C2,Y					;
+STA $0331,Y					;store things to buffer
 BEQ RETURN_CC03                
 INY                      
 JMP LOOP_CBF7
@@ -1825,6 +1844,7 @@ JMP LOOP_CBF7
 RETURN_CC03:
 RTS                      
 
+;give extra life based ob score
 CODE_CC04:
 LDA Demo_Active					;don't process if in demo mode
 BNE RETURN_CC23					;
@@ -1839,25 +1859,26 @@ ASL A
 ASL A                    
 TAX                      
 LDA ScoreDisplay_Player1,X
-CMP #$02                 
-BCC RETURN_CC23
+CMP #$02					;check for 20000 score
+BCC RETURN_CC23					;if less, return
+STA $0408,Y					;set flag for receiving extra life (only once per game and per player)
 
-STA $0408,Y              
-INC $55                  
-JSR CODE_CBBD
+INC Jumpman_Lives				;increase lives count
+JSR CODE_CBBD					;draw lives, i think
   
 RETURN_CC23:
 RTS
 
+;add bonus score to the player's when phase complete (or is TOP score?)
 CODE_CC24:
 LDA ScoreDisplay_Bonus				;add bonus score to player's score
-STA $00
+STA $00						;store hundreds into scratch ram
 
-LDA $52
-ORA #$08                 
-STA $01                  
-JSR CODE_F342
-JMP CODE_D032 
+LDA Players_CurrentPlayer			;current player index
+ORA #$08					;and bit 3 for w/e reason
+STA $01						;also into scrath ram    
+JSR CODE_F342					;
+JMP CODE_D032 					;
 
 CODE_CC34:
 LDA #$01
@@ -1884,10 +1905,10 @@ INX						;
 CPX #$89					;
 BNE CODE_CC4A					;
 
-LDA #$01
+LDA #$01					;
 STA Platform_HeightIndex			;initial platform jumpman's standing on is the first
-STA Jumpman_State				;
-STA Jumpman_JumpSpeed				;
+STA Jumpman_State				;and state
+STA Jumpman_JumpSpeed				;only one pixel per frame
 STA Hammer_OnScreenFlag				;
 STA Hammer_OnScreenFlag+1			;
 STA Hammer_JumpmanFrame				;
@@ -1918,31 +1939,31 @@ LDA #$27
 STA $44
 
 LDA PhaseNo				;check phase
-CMP #Phase_25M
-BEQ CODE_CC99                
-CMP #Phase_75M
-BEQ CODE_CCA6
+CMP #Phase_25M				;25M?
+BEQ CODE_CC99				;initialize some variables for it
+CMP #Phase_75M				;75M?
+BEQ CODE_CCA6				;initialize things for it instead
 
-LDA #Sound_Music_100M
-STA $FC                  
-RTS                      
+LDA #Sound_Music_100M			;otherwise it's just 100M music.
+STA Sound_Music				;
+RTS					;
 
 CODE_CC99:
-LDA #$38                 
-STA $36
+LDA #$38				;initial barrel throw timer
+STA Timer_KongSpawn
 
-LDA #$40                 
-STA $43
+LDA #$40				;
+STA $43					;
 
-LDA #$02                 
-STA $FC                  
-RTS                      
+LDA #Sound_Music_25M			;obviously play 25M music at 25M
+STA Sound_Music				;
+RTS					;
 
 CODE_CCA6:
-LDA #$20                 
-STA $36
+LDA #$20				;initial springboard spawn timer
+STA Timer_KongSpawn			;
     
-LDA #$50                 
+LDA #$50				;something about lifts
 STA $043F                
 STA $0441                
 STA $0443
@@ -1988,21 +2009,22 @@ LDX #$00
 JMP LOOP_CCD6
   
 RETURN_CCF3:
-RTS                      
+RTS
 
 CODE_CCF4:
 LDA $0450
 BNE CODE_CD07
 
-LDA #$01
-STA $0450
+;initialize kong falling scene
+LDA #$01				;flag
+STA $0450				;
 
-LDA #$0A
-STA $34
+LDA #$0A				;timer
+STA $34					;
 
-LDA #$10
-STA $FD
-RTS
+LDA #Sound_Fanfare_KongFalling		;i can't believe the kong is dead :pensive:
+STA Sound_Fanfare			;
+RTS					;
 
 CODE_CD07:
 LDA $43                  
@@ -2330,10 +2352,10 @@ JSR CODE_D175					;check player inputs & run game normally
 
 CODE_CED6:
 JSR CODE_EB06					;run gameplay routines
-JSR CODE_EBB6
-JSR CODE_D041
-JSR CODE_D1A4
-JSR CODE_EA5F                
+JSR CODE_EBB6					;handle bonus counter (decrease over time & kill the player)
+JSR CODE_D041					;bonus counter hurry up check
+JSR CODE_D1A4					;handle player's state
+JSR CODE_EA5F					;
 JSR CODE_E1E5
 JSR CODE_EE79
  
@@ -2364,7 +2386,7 @@ JSR CODE_EE0C
 JMP CODE_CF1C
 
 CODE_CF19:  
-JSR CODE_D0C0
+JSR CODE_D0C0					;death state exclusive routine (animate?)
   
 CODE_CF1C:
 JSR CODE_CF42
@@ -2380,18 +2402,18 @@ RTS
 
 ;exiting demo via select button
 CODE_CF2B:
-LDA #$01                 
-STA $4E                  
-STA $0512                
-STA $55
+LDA #$01					;
+STA TitleScreen_Flag				;go to title screen
+STA TitleScreen_SelectHeldFlag			;well, we've pressed select, so...
+STA Jumpman_Lives				;and set jumpman's lives count (for next demo i think)
 
-LDA #$20
-STA $44
+LDA #$20					;demo timer
+STA Timer_Demo					;
 
-LDA #$00                 
-STA $58                  
-STA $0510                
-JMP CODE_CA53                
+LDA #$00					; 
+STA Demo_Active					;demo no more
+STA TitleScreen_MainCodeFlag			;rebuild title screen
+JMP CODE_CA53					;
 
 CODE_CF42:
 LDA ControllerInput_Player1Previous		;if pressed start, pause
@@ -2409,9 +2431,9 @@ JMP CODE_C98A					;
   
 CODE_CF55:
 LDA ControllerInput_Player1Previous		;
-CMP $0514					;holds pause and any other input, but it's most likely yo hold pause input (after all it IS set after pause input)
+CMP Pause_HeldPressed				;holds pause and any other input, but it's most likely you hold pause input (after all it IS set after pause input)
 BEQ CODE_CF92					;check if it should unpause game
-STA $0514					;fun fact - if you hold start button and press/release any other input, the game will pause/unpause. that means player technically can pause game with any button (with pause being held)
+STA Pause_HeldPressed				;fun fact - if you hold start button and press/release any other input, the game will pause/unpause. that means player technically can pause game with any button (with pause being held)
 
 LDA Pause_Flag					;if the game wasn't paused, then pause it
 BEQ CODE_CF7A					;
@@ -2420,7 +2442,7 @@ LDA Pause_Timer					;unpause game on timer
 BNE RETURN_CF79					;
 STA Pause_Flag					;reset pause flag
 
-LDA $0F						;restore whatever music was playing before
+LDA Sound_MusicPauseBackup			;restore whatever music was playing before
 STA Sound_Music					;
 
 LDA RenderMirror				;enable sprite render when unpausing
@@ -2436,7 +2458,7 @@ LDA #$01					;
 STA Pause_Flag					;
 
 LDA Sound_Music					;back up music to restore it after unpausing
-STA $0F
+STA Sound_MusicPauseBackup			;
 
 LDA #Sound_Music_Silence        		;silence music     
 STA Sound_Music					;
@@ -2448,7 +2470,7 @@ STA Sound_Fanfare				;and sound effect (bit)
 RTS						;
 
 CODE_CF8F:
-STA $0514
+STA Pause_HeldPressed
   
 CODE_CF92:
 LDA Pause_Timer					;if pause timer isn't set, return
@@ -2594,8 +2616,8 @@ LDA ScoreDisplay_Bonus				;if bonus score is less than 1000, play hurry up sound
 CMP #$10					;
 BPL RETURN_D04B
 
-LDA #$20					;
-STA $FC						;music
+LDA #Sound_Music_HurryUp			;play hurry up music
+STA Sound_Music					;
   
 RETURN_D04B:
 RTS
@@ -2685,39 +2707,40 @@ STA $9A
 RETURN_D0BF:
 RTS
 
+;This runs if player's dead
 CODE_D0C0:
-LDA #Sound_Music_Silence   
-STA $FC
+LDA #Sound_Music_Silence			;no music during death 
+STA $FC						;
   
-LDA #$10                 
-JSR CODE_D9E6                
+LDA #$10					;
+JSR CODE_D9E6					;
 BEQ RETURN_D138
 
-LDA $98                  
-CMP #$FF                 
+LDA Jumpman_Death_FlipTimer
+CMP #$FF
 BEQ CODE_D130
   
-LDA $98                  
+LDA Jumpman_Death_FlipTimer
 BNE CODE_D0E4
 
 LDA $58                  
 BNE CODE_D0DD
 
-LDA #$80                 
-STA $FE
+LDA #Sound_Effect_Hit				;hit sound
+STA $FE						;
   
 CODE_D0DD:
 LDA #$40                 
 STA $3A
 
-INC $98
+INC Jumpman_Death_FlipTimer
 RTS
   
 CODE_D0E4:
-LDA $3A                  
-BEQ CODE_D0F8                
-CMP #$0E                 
-BCC RETURN_D138
+LDA $3A						;timer
+BEQ CODE_D0F8					;initialize
+CMP #$0E					;don't run things when less than 0E
+BCC RETURN_D138					;
 
 LDA Demo_Active					;if died during demo, stay silent
 BNE CODE_D0F4					;
@@ -2727,8 +2750,8 @@ LDA #Sound_Effect2_Dead				;
 STA Sound_Effect2				;
   
 CODE_D0F4:
-LDA #$00                 
-STA $3A
+LDA #$00					;reset timer
+STA $3A						;
 
 CODE_D0F8:
 LDA $0201                
@@ -2743,8 +2766,9 @@ ADC #$04
 CMP #$7C                 
 BCC CODE_D11F
 
-INC $98                  
-LDA $98                  
+INC Jumpman_Death_FlipTimer
+
+LDA Jumpman_Death_FlipTimer
 CMP #$05                 
 BEQ CODE_D115
 
@@ -2763,17 +2787,17 @@ LDA #$7C
   
 CODE_D11F:
 STA $02                  
-JSR CODE_EAE1                
+JSR CODE_EAE1
 JSR CODE_EACD                
 JSR CODE_F082
 
-LDA $98  
+LDA Jumpman_Death_FlipTimer
 CMP #$05                 
 BNE RETURN_D138
 
 CODE_D130:
 LDA #$FF                 
-STA $98
+STA Jumpman_Death_FlipTimer
 
 LDA $3A
 BEQ CODE_D139   
@@ -2868,9 +2892,10 @@ STA RenderBits					;
 STA RenderMirror				;
 RTS						;
 
+;check player's state
 CODE_D1A4:
-LDA $96                  
-CMP #$01                 
+LDA Jumpman_State
+CMP #Jumpman_State_Grounded
 BEQ CODE_D1BB
 
 CODE_D1AA:
@@ -2886,7 +2911,8 @@ RTS
 
 CODE_D1BB:
 JSR CODE_D1CF
-LDA $96                  
+
+LDA Jumpman_State
 JMP CODE_D1AA
   
 CODE_D1C3:
@@ -2895,6 +2921,7 @@ JMP CODE_D37E
 CODE_D1C6:
 JMP CODE_D547
 
+;move up ladder?
 CODE_D1C9:
 JMP CODE_D697                
 
@@ -2902,7 +2929,7 @@ CODE_D1CC:
 JMP CODE_D6C6                
 
 CODE_D1CF:
-LDA $56                  
+LDA Direction				;check for directional input
 CMP #$01                 
 BEQ CODE_D1E5
 CMP #$02                 
@@ -3771,6 +3798,7 @@ RETURN_D696:
 RTS
 ;----------------------------------------------
 
+;ladder?
 CODE_D697:
 LDA #$FF                 
 JSR CODE_D9E6                
@@ -4368,7 +4396,7 @@ BNE CODE_D9E3
 
 CODE_D9D4:  
 LDA $0203                
-CMP #$68                 
+CMP #$68    
 BEQ CODE_D9E0 
 BCC CODE_D9E0
 JMP CODE_D9E3
@@ -4381,13 +4409,14 @@ CODE_D9E3:
 LDA #$00
 RTS
 
+;used for timing things
 CODE_D9E6:
 STA $0A
  
 CODE_D9E8:
 STA $0B
   
-INC $88    
+INC $88
 LDA $88                  
 CMP #$0F                 
 BCS CODE_D9F5                
@@ -4435,45 +4464,45 @@ LDA $0200,X
 CMP #$FF                 
 BNE CODE_DA3D
 
-LDA $36                  
-BNE CODE_DA40
+LDA Timer_KongSpawn				;check if timer for barrel spawn is up
+BNE CODE_DA40					;if not, dont spawn
 
-LDA #$80
-LDX $5D                  
-STA $5E,X
+LDA #$80					;enable a barrel? i assume this is a "flag".
+LDX $5D						;load barrel index
+STA $5E,X					;store enable bit
 
-LDA #$10                 
-STA $37
+LDA #$10					;barrel hold timer, basically it'll stay in place for this amount of frames
+STA $37						;
 
-JSR CODE_EAF7                
-LDA CODE_C443,X              
-STA $36
+JSR CODE_EAF7					;get difficuly
+LDA CODE_C443,X					;load timer for next barrel throw
+STA Timer_KongSpawn				;
   
 CODE_DA3D:
-JSR CODE_DA4C
+JSR CODE_DA4C					;run barrel code
   
 CODE_DA40:
-LDA $5D                  
-CLC
-ADC #$01                 
-STA $5D                  
-CMP #$09
+LDA $5D						;BarrelIndex = BarrelIndex + 1        
+CLC						;makes me think that this was either written in higher level language or the programmer was just incompetent/inexpirienced/lazy (or all at once)
+ADC #$01					;INC BarrelIndex would look like BarrelIndex++ (i admit i don't know much about C, so plz don't kill me if im wrong)
+STA $5D						;anyway, yeah... a way to go
+CMP #$09					;well, you could INC then LDA, it'd still be more optimal.
 
 If Version = JP
-BEQ JP_RETURN_DA4A
-JMP JP_LOOP_DA19
+BEQ JP_RETURN_DA4A				;
+JMP JP_LOOP_DA19				;bad nintendo, bad!
 else
 BNE LOOP_DA1D					;wow, they actually optimized something in this code in revision 1! :clap: :clap: :clap:
 endif
 
 JP_RETURN_DA4A:
-RTS
+RTS						;
   
 CODE_DA4C:
-LDX $5D                  
-LDA $5E,X                
-CMP #$80                 
-BEQ CODE_DA7D                
+LDX $5D						; 
+LDA $5E,X					;various barrel states w/ very specific values
+CMP #$80					;if initialized
+BEQ CODE_DA7D					;
 CMP #$81                 
 BEQ CODE_DA80                
 CMP #$01                 
@@ -4525,16 +4554,16 @@ CODE_DA98:
 JSR CODE_DF07                
 RTS
 
-CODE_DA9C:     
-JSR CODE_EFD5
+CODE_DA9C:
+JSR CODE_EFD5					;
 
 LDA #$30                 
 STA $00
 
 If Version = JP
-LDA #$30					;another minor optimization they did in revision 1. we had 30 already loaded before. question is... why didn't they clean it up ENTIRELY?
+  LDA #$30					;another minor optimization they did in revision 1. we had 30 already loaded before. nintendo was still incredibly lazy to clean up everything.
 endif
-STA $01
+STA $01						;
 
 LDA #$90                 
 STA $02                  
@@ -7420,6 +7449,7 @@ STA $36
 RETURN_EA5E:
 RTS
 
+;pauline related?
 CODE_EA5F:
 LDA $39                  
 BEQ CODE_EA64                
@@ -7565,8 +7595,9 @@ LDX #$04					;maximus of speed values for lifts
   
 RETURN_EB05:
 RTS						;
+
 CODE_EB06:
-LDA $0503					;since this is always set to 1, it feels pointless
+LDA Kong_AnimationFlag				;since this is always set to 1, it feels pointless
 BNE CODE_EB0C					;
 RTS						;since it's always 1, this can't be triggered
 
@@ -7575,8 +7606,8 @@ LDA $0505					;some bits...
 AND #$0F                 
 STA $0505
 
-LDA PhaseNo
-TAX        
+LDA PhaseNo					;
+TAX						;
 TAY
 DEX
 LDA DATA_C608,X
@@ -7585,8 +7616,8 @@ STA $00
 LDA #$20                 
 STA $01                  
 TYA                      
-CMP #$02				;check if phase value is less than 2 
-BMI CODE_EB54				;go here
+CMP #$02					;check if phase value is less than 2 
+BMI CODE_EB54					;go here
  
 LDA $44                  
 BEQ CODE_EB4F
@@ -7697,27 +7728,27 @@ STA $0505
 RTS
 
 CODE_EBB6:
-LDA $45                  
-BEQ CODE_EBBB
-RTS       
+LDA Timer_BonusScoreDecrease			;check bonus counter timer
+BEQ CODE_EBBB					;if zero, decrease or kill player
+RTS						;
 
 CODE_EBBB:
-LDA ScoreDisplay_Bonus				;if bonus score is at zero, kill player
-BNE CODE_EBC4
+LDA ScoreDisplay_Bonus				;check bonus counter
+BNE CODE_EBC4					;if not zero, decrease bonus counter
 
-LDA #$FF					;RIP
+LDA #Jumpman_State_Dead				;RIP
 STA Jumpman_State				;
-RTS
+RTS						;
 
 CODE_EBC4:
-LDA #$0B                 
-STA $45
+LDA #$0B					;restore timer
+STA Timer_BonusScoreDecrease			;
 
-LDA #$01                 
-STA $00
+LDA #$01					;substract 1 (hundred) from bonus counter
+STA $00						;
 
-LDA #$0A                 
-STA $01 
+LDA #$0A					;make substraction
+STA $01						;
 JSR CODE_F33E
 
 LDA #$02
@@ -8451,6 +8482,7 @@ INC $042C,X
 LDX $0F
 RTS
 
+;not sure what this routine does but it's called quite often
 CODE_EFD5:
 LDA $5D
 
@@ -8598,7 +8630,7 @@ STA $04
 
 CODE_F082:
 LDA #$00                 
-BEQ CODE_F096					;wow, so branches are now a thing?
+BEQ CODE_F096					;wow, so branches are a thing now?
 
 CODE_F086:
 STA $04
@@ -8620,6 +8652,8 @@ STA $03
 CODE_F094:
 LDA #$0F
 
+
+;This routine is used for sprite tile updates (update 4 sprite tiles for most sprites (16x16))
 CODE_F096:
 
 ;push a bunch of things, registers, some temp RAM and stuff
@@ -8641,8 +8675,8 @@ LDA $08
 PHA                      
 LDA $09                  
 PHA                      
-LDA #$02                 
-STA $05
+LDA #$02				;high byte for indirect addressing is always 02 (to get access to 0200 page, OAM)         
+STA $05					;
 
 LDA $0F
 CMP #$04
@@ -8870,11 +8904,11 @@ LDY #$00
 LDA #$24					;fill entire screen with tile 24
 
 LOOP_F1CE: 
-STA DrawRegister
-DEY                      
-BNE LOOP_F1CE                
-DEX                      
-BNE LOOP_F1CE
+STA DrawRegister				;
+DEY						;
+BNE LOOP_F1CE					;
+DEX						;
+BNE LOOP_F1CE					;
 
 LDA #$23					;clear attributes
 STA VRAMDrawPosReg				;
@@ -8882,14 +8916,14 @@ STA VRAMDrawPosReg				;
 LDA #$C0					;
 STA VRAMDrawPosReg				;
 
-LDY #$40                 
-LDA #$00
+LDY #$40					;
+LDA #$00					;
 
 LOOP_F1E5:
-STA DrawRegister
-DEY                      
-BNE LOOP_F1E5
-RTS
+STA DrawRegister				;
+DEY						;
+BNE LOOP_F1E5					;
+RTS						;
 
 ;NES Stripe Image RLE
 
@@ -8958,33 +8992,33 @@ CLD						;disable decimal mode (not sure why)
 LDA #$04					;
 
 LOOP_F23F:
-LSR $00
-BCC CODE_F248
-PHA                      
-JSR CODE_F24E                
-PLA
+LSR $00						;
+BCC CODE_F248					;
+PHA						;
+JSR CODE_F24E					;update/draw score counter
+PLA						;
 
 CODE_F248:
-CLC                      
+CLC						;
 SBC #$00					;question-mark
-BPL LOOP_F23F                
-RTS
+BPL LOOP_F23F					;
+RTS						;
 
 CODE_F24E:  
-ASL A
-ASL A
-TAY
-STA $01
+ASL A						;*4 to get proper counter index (TOP, player 1, 2, bonus)
+ASL A						;
+TAY						;
+STA $01						;
 
-LDX $0330					;how many counters to update/which counter to upate?
-LDA DATA_C000,Y					;
+LDX $0330					;load offset within buffer
+LDA DATA_C000,Y					;update which counter?
 STA $0331,X					;first byte  - VRAM location, low byte
 JSR CODE_F32D					;
 
-INY                      
+INY						;
 LDA DATA_C000,Y					;second byte - VRAM location, high byte
-STA $0331,X
-JSR CODE_F32D
+STA $0331,X					;
+JSR CODE_F32D					;
 
 INY
 LDA DATA_C000,Y					;third byte - how many digits (tiles) to write (update)
@@ -9011,14 +9045,15 @@ LOOP_F28E:
 LDA $0020,Y					;store byte's low digit
 AND #$0F					;
 BEQ CODE_F296					;
-CLC
+CLC						;
 
 CODE_F296:
-BCC CODE_F29A
+BCC CODE_F29A					;
 
 ;----------------------------------------------
 ;!UNUSED
-;probably supposed to draw empty tiles for high (or low?) digits that are zero but there's no more logic to support this.
+;draw empty tiles instead of zeros, probably supposed to be for high digits, but it's unfinished and unused
+
 LDA #$24
 ;----------------------------------------------
   
@@ -9057,7 +9092,7 @@ BEQ CODE_F2BE					;
 
 ;----------------------------------------------
 ;!UNUSED
-;Unknown what this supposed to do but it could've been by a trigger bit.
+;related with zero into empty tiles
 SEC
 ;----------------------------------------------
 
@@ -9074,17 +9109,17 @@ BEQ RETURN_F2D6
 
 ;----------------------------------------------
 ;!UNUSED
-;Unknown code for unknown (unused) trigger bit
-INX
-LDY $01
-CLC
-LDA $0020,Y
-ADC #$37
-STA $0331,X
+;some code for unknown (unused) trigger bit
+INX						;
+LDY $01						;get counter
+CLC						;
+LDA $0020,Y					;
+ADC #$37					;print platform part tiles? what this was for?
+STA $0331,X					;
 ;----------------------------------------------
 
 RETURN_F2D6:
-RTS
+RTS						;
 
 ;draw kong - toss into buffer.
 ;BufferKongFrame_F2D7: 
@@ -9141,7 +9176,7 @@ DEC $05						;
 BNE LOOP_F2EA					;if all rows were stored, exit
 
 LDA #VRAMWriteCommand_Stop			;
-STA $0331,X					;
+STA BufferAddr,X				;
 RTS						;
 
 ;NextDrawingIndex_F32D:
@@ -9150,20 +9185,20 @@ INX						;next index...
 TXA						;into A
 
 CODE_F32F:
-CMP #$3F
-BCC RETURN_F33D
+CMP #$3F					;check if we're updating too mucn
+BCC RETURN_F33D					;if not, return
 
-;i think this is a fail proof for tile updates, if too many tiles update at once, game will glitch. or something like that. there's not as much tile updates however.
-LDX $0330					;don't update what we wanted
+LDX BufferOffset				;prevent further updates to avoid screen glitching
 
-LDA #$00					;put an end
-STA $0331,X					;
+LDA #VRAMWriteCommand_Stop			;put an end
+STA BufferAddr,X				;
 PLA						;\
 PLA						;/terminate return from routine that called this one
 
 RETURN_F33D:
 RTS						;
 
+;score addition routine, i think
 CODE_F33E:
 LDX #$FF
 BNE CODE_F344
@@ -9175,28 +9210,28 @@ CODE_F344:
 STX $04
 
 LDX #$00
-STX $05                  
+STX $05						;set scratch ram score addresses
 STX $06                  
 STX $07
 
-LDA $01                  
-AND #$08                 
-BNE CODE_F355                
-INX						;untriggered
+LDA $01
+AND #$08
+BNE CODE_F355
+INX						;if bit 3 isn't set, addition is done to tens/ones
   
 CODE_F355:
 LDA $00                  
 STA $06,X
 
-LDA $01                  
+LDA $01						;load player information
 JMP CODE_F35E					;ok???
 
 CODE_F35E:
-AND #$07                 
-ASL A                    
-ASL A                    
+AND #$07					;only relevant bits for current player   
+ASL A						;
+ASL A						;get correct index for score RAM addresses
 TAX                      
-LDA $04                  
+LDA $04						;if this address was not set, don't do some other addition (i shrug)
 BEQ CODE_F38E
 
 LDA $24,X                
@@ -9204,62 +9239,62 @@ BEQ CODE_F392
 
 CODE_F36B:
 CLC                      
-LDA $27,X                
+LDA ScoreDisplay_CurPlayer+2,X                
 STA $03
 
 LDA $07                  
 JSR CODE_F3E3                
-STA $27,X
+STA ScoreDisplay_CurPlayer+2,X
 
-LDA $26,X                
+LDA ScoreDisplay_CurPlayer+1,X                
 STA $03
 
 LDA $06                  
 JSR CODE_F3E3                
-STA $26,X
+STA ScoreDisplay_CurPlayer+1,X
 
-LDA $25,X                
+LDA ScoreDisplay_CurPlayer,X                
 STA $03
 
 LDA $05
 JSR CODE_F3E3
-STA $25,X
+STA ScoreDisplay_CurPlayer,X
 RTS
 
 CODE_F38E:  
-LDA $24,X                
+LDA $24,X			;some kinda update flag?
 BEQ CODE_F36B
   
 CODE_F392:
 SEC                      
-LDA $27,X                
+LDA ScoreDisplay_CurPlayer+2,X                
 STA $03
 
 LDA $07                  
 JSR CODE_F404
-STA $27,X
+STA ScoreDisplay_CurPlayer+2,X
 
-LDA $26,X                
+LDA ScoreDisplay_CurPlayer+1,X                
 STA $03
 
 LDA $06                  
 JSR CODE_F404
-STA $26,X
+STA ScoreDisplay_CurPlayer+1,X
 
-LDA $25,X                
+LDA ScoreDisplay_CurPlayer,X                
 STA $03
 
 LDA $05                  
 JSR CODE_F404
-STA $25,X
+STA ScoreDisplay_CurPlayer,X
 
-LDA $25,X                
+LDA ScoreDisplay_CurPlayer,X                
 BNE CODE_F3C0
 
-LDA $26,X                
+LDA ScoreDisplay_CurPlayer+1,X                
 BNE CODE_F3C0
 
-LDA $27,X                
+LDA ScoreDisplay_CurPlayer+2,X                
 BEQ CODE_F3C6
   
 CODE_F3C0:
@@ -9274,17 +9309,17 @@ SEC
 LDA #$00                 
 STA $03
 
-LDA $27,X                
+LDA ScoreDisplay_CurPlayer+2,X                
 JSR CODE_F404
+STA ScoreDisplay_CurPlayer+2,X
 
-STA $27,X
-LDA $26,X                
+LDA ScoreDisplay_CurPlayer+1,X                
 JSR CODE_F404                
-STA $26,X
+STA ScoreDisplay_CurPlayer+1,X
 
-LDA $25,X                
+LDA ScoreDisplay_CurPlayer,X                
 JSR CODE_F404 
-STA $25,X
+STA ScoreDisplay_CurPlayer,X
 
 RETURN_F3E2:
 RTS                      
@@ -9480,30 +9515,33 @@ DEX
 BPL LOOP_F4B8             
 RTS
 
+;one tile/attribute buffer update
+;Input:
+;$00, $01 - VRAM position for tile/attribute update
+;Y - tile/attribute value
 CODE_F4C2:
-LDX $0330
+LDX BufferOffset				;get current offest within buffer
 
-LDA $01
-STA $0331,X
+LDA $01						;set VRAM position (low byte)
+STA BufferAddr,X				;
+JSR CODE_F32D					;next buffer byte
 
-JSR CODE_F32D
+LDA $00						;
+STA BufferAddr,X				;
+JSR CODE_F32D					;
 
-LDA $00                  
-STA $0331,X              
-JSR CODE_F32D
+LDA #$01					;set a single byte update
+STA BufferAddr,X				;
+JSR CODE_F32D					;
 
-LDA #$01                 
-STA $0331,X              
-JSR CODE_F32D
-
-TYA                      
-STA $0331,X              
-JSR CODE_F32D
+TYA						;
+STA BufferAddr,X				;store whatever was in Y as a tile/attribute we want to write
+JSR CODE_F32D					;
       
-LDA #$00                 
-STA $0331,X              
-STX $0330                
-RTS
+LDA #VRAMWriteCommand_Stop			;put a stop (probably for now)
+STA BufferAddr,X				;
+STX BufferOffset				;store current offset for other potential tile updates
+RTS						;
 
 ;the root of all evil in this game - RNG.
 RNG_F4ED:
