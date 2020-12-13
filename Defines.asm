@@ -4,11 +4,15 @@
 
 ;$00-$0C - common scratch ram for various purposes
 ;$0D-0E - Unused
+;$0F - is a scratch ram too, also used for music restoration from pause (Sound_MusicPauseBackup)
 
 ControlMirror = $10				;mirror of ControlBits
 RenderMirror = $11				;mirror of RenderBits
 CameraPositionY = $12				;Y-position value of CameraPositionReg (first write)
 CameraPositionX = $13				;X-position value of CameraPositionReg (second write)
+
+ControllerInput = $14				;base adress for both controllers (indexed)
+ControllerInput_Previous = $15			;same as above but for presses
 
 ControllerInput_Player1 = $14			;buttons held by player 1
 ControllerInput_Player1Previous = $15		;holds initial input that won't change if holding additional buttons beside one saved in this address.
@@ -34,6 +38,7 @@ Timer_Global = $35				;16 bytes ($35-$45), specific timers listed below. $35-$3D
 ;Timer_KongAnimation = $34			;
 Timer_KongSpawn = $36				;timer for donkey kong to spawn an entity (barrel or springboard)
 Timer_Hammer = $3F				;timer for hammer power
+Timer_Score = $41				;2 bytes, show score sprites for a little bit
 Timer_Transition = $43				;common timer used for changing game states, like game over, phase init, etc. (sorta timer though it's strangely handled)
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts.
 Timer_BonusScoreDecrease = $45			;timer that decreases bonus score by 100.
@@ -58,7 +63,6 @@ LoopCount_PerPlayer = $0402			;2 bytes, contains loop count for each player
 Kong_DefeatedFlag = $9A				;sometimes set and reset immideatly when completing phase but phase 3. stops normal gameplay functions just like GameControlFlag
 Kong_AnimationFlag = $0503			;if set, kong will play animations, but it's always set to 1, so he always play animations.
 
-
 ;hold directional inputs
 Direction = $56					;saves directional input
 Direction_Horz = $57				;only saves left and right directional inputs
@@ -69,11 +73,17 @@ Jumpman_YPos = $47				;same as above
 Jumpman_XPosRange = $48				;used for ladder detection. it's the same  value as in Jumpman_XPos, + 4
 Jumpman_Lives = $55
 Jumpman_State = $96				;$01 - grounded, $02 - on ladder, $04 - Jumping, $08 - Falling, $0A - Has a hammer, $FF - Dead
+Jumpman_GFXFrame = $97				;contains top-left sprite tile value, remaining sprite tiles get +1 to this value each
 Jumpman_Death_FlipTimer = $98			;timer for flipping death animation. when set to FF, show actual death frame.
+Jumpman_HeldHammerIndex = $A0			;stores index of hammer that is currently being held (0 - not holding anything)
 ;Jumpman_XPos = $48				;maybe this one is actually the true one, but IDK
 ;Jumpman_XPos = $A1
 Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
-Hammer_OnScreenFlag = $0451			;2 bytes. If set, it's on screen and can be picked up, if not it has been picked up already.
+
+Jumpman_WalkFlag = $9B				;if set, move the player and animate (move every other frame)
+Jumpman_AirMoveFlag = $9E			;if set, move player horizontally when jumping (update every other frame)
+
+Hammer_CanGrabFlag = $0451			;2 bytes. If set, it can be interacted with and when grabbed, set to 0.
 Hammer_JumpmanFrame = $9F			;graphical frame index when jumpman's swinging the hammer
 Hammer_DestroyingEnemy = $BF			;flag that deternimes whether we're destoying a hazard with a hammer. also acts as graphical index for destruction.
 
@@ -107,10 +117,29 @@ OAM_Prop = $0202
 OAM_X = $0203
 
 ;OAM addresses for various objects
+;use X_OAM_Slot to change RAM addresses for these, where X is a thing the OAM slot is being assigned to (e.g. Jumpman_OAM_Slot)
+
 Cursor_OAM_Y = OAM_Y+(4*Cursor_OAM_Slot)
 Cursor_OAM_Tile = OAM_Tile+(4*Cursor_OAM_Slot)
 Cursor_OAM_Prop = OAM_Prop+(4*Cursor_OAM_Slot)
 Cursor_OAM_X = OAM_X+(4*Cursor_OAM_Slot)
+
+;NOTE: OAM Y and X positions are often used as real X and Y pos for checks and stuff, sometimes stored in other addresses, but those are basically main addresses
+
+Jumpman_OAM_Y = OAM_Y+(4*Jumpman_OAM_Slot)
+Jumpman_OAM_Tile = OAM_Tile+(4*Jumpman_OAM_Slot)
+Jumpman_OAM_Prop = OAM_Prop+(4*Jumpman_OAM_Slot)
+Jumpman_OAM_X = OAM_X+(4*Jumpman_OAM_Slot)
+
+Score_OAM_Y = OAM_Y+(4*Score_OAM_Slot)
+Score_OAM_Tile = OAM_Tile+(4*Score_OAM_Slot)
+;prop isn't used
+Score_OAM_X = OAM_X+(4*Score_OAM_Slot)
+
+Hammers_OAM_Y = OAM_Y+(4*Hammer_OAM_Slot)
+Hammers_OAM_Tile = OAM_Tile+(4*Hammer_OAM_Slot)
+Hammers_OAM_Prop = OAM_Prop+(4*Hammer_OAM_Slot)
+Hammers_OAM_X = OAM_X+(4*Hammer_OAM_Slot)
 
 BufferOffset = $0330				;used to offset buffer position
 BufferAddr = $0331				;buffer for tile updates (62 bytes)
@@ -167,6 +196,7 @@ Demo_NoInput = $00
 
 ;Jumpman state values
 Jumpman_State_Grounded = $01
+Jumpman_State_Climbing = $02
 Jumpman_State_Jumping = $04
 Jumpman_State_Falling = $08
 Jumpman_State_Hammer = $0A
@@ -216,11 +246,38 @@ Sound_Effect2_Jump = $04
 Sound_Effect2_Movement = $08
 ;other bits are unused
 
-;Various OAM props, fixed positions and tiles grouped together
+;Various OAM-related defines. OAM slots are in decimal (from 0 to 63).
 Cursor_OAM_Slot = 0				;for title screen
 Cursor_Tile = $A2
 Cursor_XPos = $38
 Cursor_Prop = $00
+
+Jumpman_OAM_Slot = 0
+
+;Jumpman graphic frames
+Jumpman_GFXFrame_Walk2 = $00
+Jumpman_GFXFrame_Stand = $04
+Jumpman_GFXFrame_Walk1 = $08
+Jumpman_GFXFrame_Jumping = $28
+Jumpman_GFXFrame_Landing = $2C
+
+Jumpman_GFXFrame_Walk2_HammerUp = $0C
+Jumpman_GFXFrame_Walk2_HammerDown = $10
+Jumpman_GFXFrame_Stand_HammerUp = $14
+Jumpman_GFXFrame_Stand_HammerDown = $18
+Jumpman_GFXFrame_Walk1_HammerUp = $1C
+Jumpman_GFXFrame_Walk1_HammerDown = $20
+
+Score_OAM_Slot = 48
+Score_OneTile = $D0				;score sprite tile for 1 (for 100 points)
+Score_ThreeTile = $D1				;score sprite tile for 3 (for 300 points) (unused)
+Score_FiveTile = $D2				;score sprite tile for 5 (for 500 points)
+Score_EightTile = $D3				;score sprite tile for 8 (for 800 points)
+Score_TwoZeroTile = $D4				;00 tile
+
+Hammer_OAM_Slot = 52				;one hammer takes 2 slots
+Hammer_GFXFrame_HammerUp = $F6			;2 tiles, F6 and F7
+Hammer_GFXFrame_HammerDown = $FA		;same as above
 
 ;version defines, don't touch
 JP = 0
