@@ -6,10 +6,10 @@ Tags:
 CODE - marks a block of code
 DATA - marks a block of data
 UNUSED - marks an unused code or data
-LOOP - marks a repeating instructions
+LOOP - marks a set of repeating instructions
 RETURN - marks a return from routine
 
-there are also version-specific labels. Default labels refer to Revision 1/US version.
+there are also version-specific labels. Default labels refer to Revision 1/US version (yeah, their adresses aren't the same for others. can't really do much, add PC address for each line for each version? would've been cool with automated tool)
 JP - revision 0/japan only 
 Gamecube - gamecube only
 

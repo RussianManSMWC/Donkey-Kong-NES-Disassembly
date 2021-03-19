@@ -1,6 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;local RAM addresses
 ;some of this comes from Data Crystal. Thanks!
+;(to-do: split into addresses and constants?)
 
 ;$00-$0C - common scratch ram for various purposes
 ;$0D-0E - Unused
@@ -22,6 +23,7 @@ ControllerInput_Player2Previous = $17		;/
 
 RNG_Value = $18					;8 bytes (18-1F)
 
+;$20, $24 and $28 are checked but seem to be unused. currently unknown what their purpose is (they're for respective score counters)
 ScoreDisplay_Top = $21				;\3 bytes, decimal (21-23).
 ScoreDisplay_Player1 = $25			;|(25-27)
 ScoreDisplay_Player2 = $29			;/(29-2B)
@@ -40,7 +42,9 @@ Timer_Global = $35				;16 bytes ($35-$45), specific timers listed below. $35-$3D
 Timer_KongSpawn = $36				;timer for donkey kong to spawn an entity (barrel or springboard)
 Timer_FlameAnimation = $38			;used for oil flame in phase 1
 Timer_PaulineAnimation = $39			;used for pauline animation, when zero start animation
+
 Timer_Hammer = $3F				;timer for hammer power
+Timer_FlameEnemySpawn = $40
 Timer_Score = $41				;2 bytes, show score sprites for a little bit
 Timer_Transition = $43				;common timer used for changing game states, like game over, phase init, etc. (sorta timer though it's strangely handled)
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts. (TO-DO: used for something else as well?)
@@ -55,6 +59,7 @@ GameControlFlag = $4F				;not sure...
 GameMode = $50					;bit 0 - Game A or B, bit 1 - 1 player or 2 players
 
 PhaseNo = $53
+PhaseNo_PerPlayer = $0400			;2 bytes, phase for each player
 
 LoopCount = $54					;number of times 100M was completed
 LoopCount_PerPlayer = $0402			;2 bytes, contains loop count for each player
@@ -65,8 +70,10 @@ Direction_Horz = $57				;only saves left and right directional inputs
 
 ;related with platforms
 Platform_HeightIndex = $59			;how high player is by platform. 1st platform is the lowest and etc.
-Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform jumpman's standing.
 Jumpman_OnPlatformFlag = $5A			;set when jumpman's standing on the platform. reset when in air or climbing a ladder
+Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform jumpman's standing.
+
+;$64-$67 - unused
 
 ;maybe not barrel-specific vvv
 Barrel_CurrentIndex = $5D
@@ -75,9 +82,6 @@ Barrel_GFXFrame = $72
 
 Barrel_ShiftDownFlag = $7D			;if set, move barrel's y-pos by 1 pixel for shifted platforms
 Barrel_AnimationTimer = $040D			;animate every certain amount of frames (see Barrel_AnimateFrames)
-
-;springboards from phase 3
-Springboard_CurrentIndex = $0445
 
 ;maybe rename to "Phase_CompleteFlag"? (below define)
 Kong_DefeatedFlag = $9A				;sometimes set and reset immideatly when completing phase but phase 3. stops normal gameplay functions just like GameControlFlag
@@ -103,25 +107,32 @@ Jumpman_AirMoveFlag = $9E			;if set, move player horizontally when jumping (upda
 
 Hammer_CanGrabFlag = $0451			;2 bytes. If set, it can be interacted with and when grabbed, set to 0.
 Hammer_JumpmanFrame = $9F			;graphical frame index when jumpman's swinging the hammer
-Hammer_DestroyingEnemy = $BF			;flag that deternimes whether we're destoying a hazard with a hammer. also acts as graphical index for destruction.
+Hammer_DestroyingEnemyFlag = $BF		;flag that deternimes whether we're destoying a hazard with a hammer. also acts as graphical index for destruction.
 
 ;$0500 - Unused
 
 Flame_State = $AD				;oil flame state. 0 - non-existant, 1 - init, 2 - animate, 3 - ???
 FlameEnemy_CurrentIndex = $AE			;
 FlameEnemy_State = $AF				;actual enemies
+FlameEnemy_Direction = $B3			;surprizingly underutilized, only used when standing in place (direction is also FlameEnemy_State)
+FlameEnemy_MoveDirection = $99			;1 byte, stores movement direction (also used for drawing for said movement instead of sprite table above) 0 - move right, 1 - move left.
 
 Pauline_AnimationCount = $B7			;used to change graphic frame, counts untill specified value after which stops animating for a bit
 
 EnemyDestruction_Animation = $BF		;if set to 1, start counting up untill specified value, after which the animation is stopped
 
-Cursor_YPosition = $0511
+FlameEnemy_DontFollowFlag = $D2			;25M and 100M only, if set don't follow the player (but it depends on difficulty)
+
+;springboards from phase 3
+Springboard_CurrentIndex = $0445
 
 Demo_Active = $58				;demo is active flag.
 Demo_InitFlag = $050B				;true - has been initialized, false - do init
 Demo_InputTimer = $050C				;how long input/command will last
 Demo_Input = $050D				;what input (button/command) is processed
 Demo_InputIndex = $050E				;index of current input
+
+Cursor_YPosition = $0511
 
 Pause_HeldPressed = $0514			;this address reacts to pause being pressed/held but can also hold directional inputs (as long as pause is held). used to prevent pause switching every frame when pause is held.
 Pause_Flag = $0516				;flag to indicate if game is paused
@@ -177,6 +188,11 @@ PaulineBody_OAM_Y = OAM_Y+(4*PaulineBody_OAM_Slot)
 PaulineBody_OAM_Tile = OAM_Tile+(4*PaulineBody_OAM_Slot)
 PaulineBody_OAM_Prop = OAM_Prop+(4*PaulineBody_OAM_Slot)
 PaulineBody_OAM_X = OAM_X+(4*PaulineBody_OAM_Slot)
+
+PlatformSprite_OAM_Y = OAM_Y+(4*PlatformSprite_OAM_Slot)
+PlatformSprite_OAM_Tile = OAM_Tile+(4*PlatformSprite_OAM_Slot)
+PlatformSprite_OAM_Prop = OAM_Prop+(4*PlatformSprite_OAM_Slot)
+PlatformSprite_OAM_X = OAM_X+(4*PlatformSprite_OAM_Slot)
 
 BufferOffset = $0330				;used to offset buffer position
 BufferAddr = $0331				;buffer for tile updates (62 bytes)
@@ -339,6 +355,11 @@ PaulineHead_Tile = $D5
 PaulineBody_GFXFrame_Frame1 = $D7		;\for body animation
 PaulineBody_GFXFrame_Frame2 = $DB		;/
 
+Barrel_OAM_Slot = 12
+
+PlatformSprite_OAM_Slot = 12
+PlatformSprite_Tile = $A0
+
 ;not to be confused with flame enemy! this is oil barrel flame from phase 1
 Flame_OAM_Slot = 56				;2 tiles
 Flame_XPos = $20
@@ -349,12 +370,22 @@ Flame_GFXFrame_Frame2 = $FE
 Heart_OAM_Slot = 44
 Heart_OAM_Tile = $C8
 
+FlameEnemy_OAM_Slot = 4
+
 FlameEnemy_GFXFrame_Frame1 = $98
 FlameEnemy_GFXFrame_Frame2 = $9C
 
 ;a different enemy (well, at least in appearance) seen in 100M phase
 FlameEnemy100M_GFXFrame_Frame1 = $A8
 FlameEnemy100M_GFXFrame_Frame2 = $AC
+
+FlameEnemy_State_MoveRight = $01
+FlameEnemy_State_MoveLeft = $02
+FlameEnemy_State_SpawnINIT = $06			;oil barrel (25M) or just appear (100M)
+FlameEnemy_State_SpawnFromOil = $08
+FlameEnemy_State_GFXShiftUp = $10
+FlameEnemy_State_NoGFXShift = $20
+FlameEnemy_State_GFXShiftDown = $FF
 
 Spring_GFXFrame_UnPressed = $C0
 Spring_GFXFrame_Pressed = $C4

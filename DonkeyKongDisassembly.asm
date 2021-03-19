@@ -19,20 +19,7 @@ Version = US
 
 incsrc JPRemap.asm				;macros for some changes done between JP vs. US/Rev 0 vs. Rev 1
 
-db "NES",$1A
-
-If Version = Gamecube
-  db $02					;gamecube version has more space (two 16KB PRG banks instead of 1)
-else
-  db $01					;16KB PRG banks = 1
-endif
-
-db $01						;one 8KB graphic bank
-db $00						;horizontal mirroring
-db $00						;Mapper 0 - NROM
-
-db $00,$00,$00,$00				;unused
-db $00,$00,$00,$00				;
+incsrc iNES_Header.asm				;should be self-explanatory
 
 If Version = Gamecube
   org $8000
@@ -179,9 +166,10 @@ db $00,$D8,$00,$00,$01,$00
 db $80,$D7,$04,$18,$06,$FE
 db $C8,$BC,$04,$E8,$09,$FE
 db $20,$9E,$04,$18,$09,$FE
-db $C8,$80,$04,$E8,$09,$FE,$20,$62
-db $04,$18,$09,$FE,$C8,$44,$04,$E8
-db $06,$FE,$80,$28,$04,$00,$01,$FE
+db $C8,$80,$04,$E8,$09,$FE
+db $20,$62,$04,$18,$09,$FE
+db $C8,$44,$04,$E8,$06,$FE
+db $80,$28,$04,$00,$01,$FE
 
 ;y-position of each platform (from highest point + 16 pixels), used to calculate platform index
 ;FF sets index to 7 (which is the lowest platform)
@@ -197,9 +185,9 @@ db $00,$00,$10,$00
 
 ;IDK
 DATA_C0CF:
-db $E0,$BC,$00,$10,$9E,$00,$E0,$80
-db $00,$10,$62,$00,$E0,$44,$00,$FE
-db $00,$00,$10,$03
+db $E0,$BC,$00,$10,$9E,$00
+db $E0,$80,$00,$10,$62,$00
+db $E0,$44,$00,$FE,$00,$00,$10,$03
 
 DATA_C0E3:
 db $C8,$BC,$08,$C8
@@ -237,7 +225,7 @@ DATA_C159:
 db Jumpman_GFXFrame_Climbing,Jumpman_GFXFrame_Climbing,Jumpman_GFXFrame_Climbing
 db $54,$54,$54
 
-;unknown
+;unknown, probably just some placeholder (for the table above?)
 UNUSED_C15F:
 db $00,$00
 
@@ -249,6 +237,7 @@ db $18
 DATA_C172:
 db $CA,$A7,$8E,$6B,$51
 
+;related with barrels and ladders?
 DATA_C177:
 db $5C,$2C,$4C,$2C,$64
 
@@ -320,27 +309,22 @@ DATA_C1E1:
 db $52,$6C,$8E,$A8,$CA,$FE
 
 DATA_C1E7:
-db $00,$06
-db $08,$08
+db $00,$06,$08,$08				;hmm...
 
 DATA_C1EB:
 db $19,$30,$34,$30,$34,$30,$34,$38
 db $3C,$3C,$3C
 
+;contains maximum amount of flame enemies that can be processed per-phase
+;MaxNumberOfFlameEnemies_C1F6:
 DATA_C1F6:
-db $02
-
-UNUSED_C1F7:
-db $04
-
-DATA_C1F8:
-db $02,$04
+db $02,$04,$02,$04			;2 in 25M and 75M, 4 in 50M (unused) and 100M
 
 DATA_C1FA:
 db $07          
 
 UNUSED_C1FB:
-db $05					;actually used somehow, 75M lowest platform related? (looks like not...)
+db $05					;used? maybe I messed up somewhere...
 
 DATA_C1FC:
 db $07
@@ -453,9 +437,17 @@ db $7F,$13,$7C,$7F,$13,$D4,$7F,$13
 db $24,$57,$13,$44,$57,$13,$AC,$57
 db $13,$CC,$57,$13
 
+;X and Y positions for flame enemy spawns (100M)
+;Init_100M_FlameEnemy_XYPos_C3CE:
 DATA_C3CE:
-db $08,$C7,$10,$A7,$18,$7F,$20,$57
-db $E8,$C7,$E0,$A7,$D8,$7F,$D0,$57
+db $08,$C7
+db $10,$A7
+db $18,$7F
+db $20,$57
+db $E8,$C7
+db $E0,$A7
+db $D8,$7F
+db $D0,$57
 
 DATA_C3DE:
 db $34,$AC,$44,$BC
@@ -554,9 +546,11 @@ db $88,$88,$24,$55,$55
 DATA_C461:
 db $88,$88,$49,$55,$55
 
+;number of frames between each flame enemy spawn for 100M, based on difficulty
 DATA_C466:
-db $40,$20,$10,$08,$01   
+db $40,$20,$10,$08,$01
 
+;pointers?
 UNUSED_C46B:
 db $8C,$C0,$0C,$C2
 
@@ -574,7 +568,7 @@ DATA_C47B:
 dw DATA_C0E3
 
 UNUSED_C47D:
-db $0C,$C2
+db $0C,$C2				;phase 2 most likely
 
 DATA_C47F:
 db $6E,$C2,$16,$C3
@@ -634,14 +628,14 @@ dw DATA_F71C					;
 dw DATA_F8D9					;title screen
 dw DATA_FA1B					;hud
 
-;this data is used to initialize various entities, storing directly to OAM
+;this data is used to initialize various entities, storing directly to their OAM slots
 ;Format: XYTRcOD
 ;X - initial X-position
 ;Y - initial Y-position
 ;T - Sprite tile (the first one to draw, after each +1 is addded for other tiles)
-;Rc - Rows and columns - how many rows and columns to draw
+;Rc - Rows and columns - how many rows and columns to draw, with rows taking high nibble and columns low nibble (e.g. $12 is 1 row and 2 columns)
 ;O - OAM slot
-;D - Drawing mode, see SpriteDrawingEngine_F096 for more (Input accamulator)
+;D - Drawing mode, see SpriteDrawingEngine_F096 for more (input accamulator)
 ;for example, let's take a 6 byte row below:
 ;remove 6 sprite tiles starting from OAM offset E8, which is, by default, Pauline's head (so that means remove pauline, then reinitialize), X and Y-positions don't matter
 ;$FE acts as a terminator for the initializer
@@ -657,7 +651,7 @@ db $50,$18,PaulineHead_Tile,$12,PaulineHead_OAM_Slot*4,$00
 db $50,$20,PaulineBody_GFXFrame_Frame2,$22,PaulineBody_OAM_Slot*4,$00
 
 ;remove barrels
-db $00,$00,$03,$2C,$30,$04
+db $00,$00,$03,$2C,Barrel_OAM_Slot*4,$04
 
 ;hammer 1
 db $20,$7F,Hammer_GFXFrame_HammerUp,$21,Hammer_OAM_Slot*4,$00
@@ -669,65 +663,87 @@ db $20,$46,Hammer_GFXFrame_HammerUp,$21,Hammer_OAM_Slot*4+8,$00
 db $00,$00,$01,$04,Score_OAM_Slot*4,$04
 
 ;remove jumpman
-db $00,$00,$00,$04,$00,$04
+db $00,$00,$00,$04,Jumpman_OAM_Slot*4,$04
 
 ;init jumpman's position
 db $30,$C7,$04,$22,Jumpman_OAM_Slot*4,$00
 
 ;remove flame enemies
-db $00,$00,$02,$08,$10,$04
+db $00,$00,$02,$08,FlameEnemy_OAM_Slot*4,$04
 
 ;remove oil barrel flame
 db $00,$00,$02,$02,Flame_OAM_Slot*4,$04
+
 db $FE						;no more init
 
-;pauline again?
-db $00,$00,$01,$06,$E8,$04
+;Phase3_InitEntities_C4F6:
+DATA_C4F6:
+;remove pauline
+db $00,$00,$01,$06,PaulineHead_OAM_Slot*4,$04
 
+;place pauline
+db $50,$18,PaulineHead_Tile,$12,PaulineHead_OAM_Slot*4,$00
+db $50,$20,PaulineBody_GFXFrame_Frame2,$22,PaulineBody_OAM_Slot*4,$00
 
-db $50,$18,$D5,$12,$E8,$00
-db $50,$20,$DB,$22,$F0,$00
-
-;remove platforms i think
-db $00,$00,$03,$0C,$30,$04
+;remove platforms
+db $00,$00,$03,$0C,PlatformSprite_OAM_Slot*4,$04
 
 ;then place in some
-db $30,$78,$A0,$12,$30,$00
-db $30,$A8,$A0,$12,$38,$00
-db $30,$49,$A0,$12,$40,$00
-db $70,$70,$A0,$12,$48,$00
-db $70,$A0,$A0,$12,$50,$00
-db $70,$D7,$A0,$12,$58,$00
+db $30,$78,PlatformSprite_Tile,$12,PlatformSprite_OAM_Slot*4,$00	;each platform uses 2 OAM tiles btw
+db $30,$A8,PlatformSprite_Tile,$12,(PlatformSprite_OAM_Slot+2)*4,$00
+db $30,$49,PlatformSprite_Tile,$12,(PlatformSprite_OAM_Slot+4)*4,$00
+db $70,$70,PlatformSprite_Tile,$12,(PlatformSprite_OAM_Slot+6)*4,$00
+db $70,$A0,PlatformSprite_Tile,$12,(PlatformSprite_OAM_Slot+8)*4,$00
+db $70,$D7,PlatformSprite_Tile,$12,(PlatformSprite_OAM_Slot+10)*4,$00
 
-;remove something...
-db $00,$00,$23,$02,$40,$04
-
+;remove something... (springboards?)
+db $00,$00,$23,$02,$40,$04			;it skips 48???
 db $00,$00,$23,$02,$58,$04
-db $00,$00,$00,$04,$00
-db $04,$10,$B7,$04,$22,$00,$00,$00
-db $00,$02,$08,$10,$04,$4C,$9F,$98
-db $22,$10,$00,$CC,$67,$98,$22,$20
-db $00,$00,$00,$03,$0C,$60,$04,$00
-db $00,$01,$16,$90,$04,$FE,$00,$00
-db $01,$06,$E8,$04,$50,$18,$D5,$12
-db $E8,$00,$50,$20,$DB,$22,$F0,$00
-db $00,$00,$03,$04,$D0,$04,$14,$6E
-db $F6,$21,$D0,$00,$7C,$46,$F6,$21
-db $D8,$00,$00,$00,$01,$20,$50,$04
-db $00,$00,$00,$04,$00,$04,$38,$C7
-db $04,$22,$00,$00,$00,$00,$02,$10
-db $10,$04,$FE
 
-;pointer for various entity initializations (Pauline and enemies)
+;init jumpman
+db $00,$00,$00,$04,Jumpman_OAM_Slot*4,$04
+db $10,$B7,Jumpman_GFXFrame_Stand,$22,Jumpman_OAM_Slot*4,$00
+
+;init flame enemies
+db $00,$00,$02,$08,FlameEnemy_OAM_Slot*4,$04
+db $4C,$9F,FlameEnemy_GFXFrame_Frame1,$22,FlameEnemy_OAM_Slot*4,$00
+db $CC,$67,FlameEnemy_GFXFrame_Frame1,$22,(FlameEnemy_OAM_Slot+4)*4,$00
+
+;remove something else...
+db $00,$00,$03,$0C,$60,$04
+db $00,$00,$01,$16,$90,$04
+
+db $FE
+
+;Phase4_InitEntities_C569:
+DATA_C569:
+
+;pauline as usual
+db $00,$00,$01,$06,PaulineHead_OAM_Slot*4,$04
+db $50,$18,PaulineHead_Tile,$12,PaulineHead_OAM_Slot*4,$00
+db $50,$20,PaulineBody_GFXFrame_Frame2,$22,PaulineBody_OAM_Slot*4,$00
+
+db $00,$00,$03,$04,Hammer_OAM_Slot*4,$04
+db $14,$6E,Hammer_GFXFrame_HammerUp,$21,Hammer_OAM_Slot*4,$00
+db $7C,$46,Hammer_GFXFrame_HammerUp,$21,(Hammer_OAM_Slot+2)*4,$00
+
+db $00,$00,$01,$20,$50,$04
+
+db $00,$00,$00,$04,Jumpman_OAM_Slot*4,$04
+db $38,$C7,Jumpman_GFXFrame_Stand,$22,Jumpman_OAM_Slot*4,$00
+
+db $00,$00,$02,$10,$10,$04
+
+db $FE
+
+;pointer for various entity initializations (tables above) for each phase
 DATA_C5A6:
 dw DATA_C4B3
+dw DATA_C4F6				;y'know the drill by now.
+dw DATA_C4F6
+dw DATA_C569
 
-UNUSED_C5A8:
-db $F6,$C4
-
-DATA_C5AA:
-db $F6,$C4,$69,$C5      
-
+;unknown, maybe related with the table below?
 UNUSED_C5AE:
 db $7F,$7F,$7F,$00
 
@@ -741,19 +757,10 @@ DATA_C5B9:
 db $A9,$A9,$81,$81,$59,$59,$31,$31
 
 UNUSED_C5C1:
-db $00
+db $00,$30,$4C,$D5,$00
 
-UNUSED_C5C2:
-db $30,$4C,$D5,$00
-
-DATA_C5C5:
-db $10,$E0              
-
-UNUSED_C5C8:
-db $00
-
-DATA_C5C9:
-db $24,$50,$C0
+DATA_C5C6:
+db $10,$E0,$00,$24,$50,$C0
 
 UNUSED_C5CC:
 db $00
@@ -818,8 +825,7 @@ db $0B
 ;score sprite data
 ;there's data for completely unused 300 score.
 
-;Score values added to score counter
-
+;Score values added to score counter (hundreds)
 DATA_C600:
 db $01						;100
 db $03						;300 (unused)
@@ -871,7 +877,8 @@ db $C9,$CA,$6D,$BF
 db $24,$CD,$6A,$B1
 
 ;...
-db $46,$C2
+db $46
+db $C2
 db $C3,$24,$9E,$C4,$C5,$C6,$C7,$A3
 db $B9,$A5,$A6,$A7,$BB,$6B,$C8,$C9
 db $CA,$CB,$CC,$24,$CD,$CE,$CF,$46
@@ -899,20 +906,34 @@ db $21,$CA
 db $0C|VRAMWriteCommand_Repeat
 db $24
 
+;"  PLAYER I  " (I is replaced with II (tile 67) if second player, obviously
 db $21,$EA
 db $0C
-;"  PLAYER I  " (I is replaced with II (tile 67) if second player, obviously
-db $24,$24,$19,$15,$0A,$22,$0E,$1B
-db $24,$66,$24,$24
+db $24,$24,$19,$15,$0A,$22,$0E,$1B,$24,$66,$24,$24
 
 db VRAMWriteCommand_Stop
 
 ;data for "GAME OVER" message
+;Attributes first
 DATA_C6C2:
-db $23,$E2,$04,$08,$0A,$0A,$02,$22
-db $0A,$4C,$24,$22,$2A,$0C,$24,$10
-db $0A,$16,$0E,$24,$24,$18,$1F,$0E
-db $1B,$24,$22,$4A,$4C,$24,$00
+db $23,$E2
+db $04
+db $08,$0A,$0A,$02
+
+db $22,$0A
+db $0C|VRAMWriteCommand_Repeat
+db $24
+
+;" GAME  OVER "
+db $22,$2A
+db $0C
+db $24,$10,$0A,$16,$0E,$24,$24,$18,$1F,$0E,$1B,$24
+
+db $22,$4A
+db $0C|VRAMWriteCommand_Repeat
+db $24
+
+db VRAMWriteCommand_Stop
 
 DATA_C6E1:
 db $12						;two vertical lines with 1 byte each
@@ -1389,7 +1410,7 @@ STA Timer_Demo					;
 RTS						;
 
 CODE_C940:
-LDA $15						;check for select (change option or cancel demo)
+LDA ControllerInput_Player1Previous		;check for select (change option or cancel demo)
 If Version = Gamecube
   AND #Input_Select|Input_Up|Input_Down		;on gamecube Up and Down on D-pad also change option
 else
@@ -1422,7 +1443,7 @@ LDA TitleScreen_SelectHeldFlag			;if select is being held, don't switch anymore
 BNE CODE_C985					;
 
 LDA #$40					;
-STA $35						;
+STA $35						;timer that's actually pointless (see below)
 
 If Version = Gamecube
   JSR Gamecube_CODE_BFF0			;make cursor loop from first option to last (since we can use D-pad now)
@@ -1451,7 +1472,7 @@ STA Unused_0513					;in DK JR (for the NES) similar address is set as a timer fo
 RTS						;
 
 CODE_C985:
-LDA $35						;wait a minute... what? this check makes no sense!     
+LDA $35						;wait a minute... what? this check makes no sense!
 BNE RETURN_C989					;however, DK JR gives us a clue on what this supposed to be. this timer was used for option switching when select was held (so it'd continiously switch when this timer was zero). It'd use timer for option switching that is unused for this game (it's Unused_0513). 
 
 RETURN_C989:
@@ -1475,7 +1496,7 @@ LSR A						;
 LSR A						;
 SEC						;
 SBC #$07					;
-STA $50						;
+STA GameMode					;
 CMP #$02					;
 BMI CODE_C9AD					;check if it was one of first two options (1 Player Game A or B)
 
@@ -1488,14 +1509,14 @@ LDA #Players_1Player				;one player
 STA Players					;
 
 CODE_C9B1:
-LDA $50						;load bit for game B if set (option 1 or 3)
+LDA GameMode					;load bit for game B if set (option 1 or 3)
 AND #$01					;
 ASL A						;
 TAX						;
-LDA $0507,X					;show top score depending on whether it was a 1P or 2P game.
+LDA Score_Top,X					;show top score depending on whether it was an A or B game.
 STA ScoreDisplay_Top				;
 
-LDA $0508,X					;
+LDA Score_Top+1,X				;
 STA ScoreDisplay_Top+1				;
 
 LDA #$0F					;set RNG seed, basically
@@ -1511,17 +1532,17 @@ STA $0407					;
 STA GameControlFlag				;can't control yet
 STA TitleScreen_MainCodeFlag			;initialize title screen next time we get there
 STA $050B
-STA $0512
+STA TitleScreen_SelectHeldFlag			;not holding select, k?
 
 LDA #$01                 
 STA PhaseNo					;start from 25M
-STA $0400					;initialize  both player's phase number
-STA $0401					;
+STA PhaseNo_PerPlayer				;initialize  both player's phase number
+STA PhaseNo_PerPlayer+1				;
 
 LDA #$00
 STA LoopCount					;initialize loop counter
-STA $0402                
-STA $0403
+STA LoopCount_PerPlayer				;
+STA LoopCount_PerPlayer+1			;
 
 LDA #$00					;but we had 00 loaded before... and before before.
 STA Players_CurrentPlayer			;
@@ -1653,7 +1674,7 @@ LOOP_CAAB:
 LDA $0400,X					;
 STA $0053,Y					;
 INX						;
-INX						;X+2 so to hop over other player's adress
+INX						;X+2 so to hop over other player's address
 INY						;
 CPY #$03					;
 BNE LOOP_CAAB					;
@@ -1721,10 +1742,10 @@ JSR CODE_CC34
 RTS                      
 
 CODE_CAFA:
-LDA #$01                 
-STA $4F                  
-JSR CODE_CC47
-RTS                      
+LDA #$01					;
+STA GameControlFlag				;can play game...
+JSR CODE_CC47					;
+RTS						;
 
 CODE_CB02:
 LDX Players_CurrentPlayer			;load current pplayer in play
@@ -2013,12 +2034,12 @@ CODE_CC47:
 LDA #$00
 TAX
 
-CODE_CC4A:  
+LOOP_CC4A:  
 STA $59,X					;initialize RAM from 59-E2
 STA $040D,X					;and $040D-$0496
 INX						;
 CPX #$89					;
-BNE CODE_CC4A					;
+BNE LOOP_CC4A					;
 
 LDA #$01					;
 STA Platform_HeightIndex			;initial platform jumpman's standing on is the first
@@ -2047,11 +2068,11 @@ STA Timer_Timing
 LDX Players_CurrentPlayer			;set some variables based on which player's currently playing?
 JSR CODE_CAB9					;
 
-LDA #Time_PaulineAnim
-STA Timer_PaulineAnimation
+LDA #Time_PaulineAnim				;
+STA Timer_PaulineAnimation			;
 
-LDA #Time_ForDemo
-STA Timer_Demo
+LDA #Time_ForDemo				;
+STA Timer_Demo					;
 
 LDA PhaseNo					;check phase
 CMP #Phase_25M					;25M?
@@ -2065,10 +2086,10 @@ RTS						;
 
 CODE_CC99:
 LDA #$38					;initial barrel throw timer
-STA Timer_KongSpawn
+STA Timer_KongSpawn				;
 
 LDA #$40					;
-STA $43						;
+STA Timer_Transition				;
 
 LDA #Sound_Music_25M				;obviously play 25M music at 25M
 STA Sound_Music					;
@@ -2445,7 +2466,7 @@ CODE_CEAE:
 JMP CODE_CF1C					;
   
 CODE_CEB1:
-LDA Hammer_DestroyingEnemy			;but before that, check if we're destoying an enemy
+LDA Hammer_DestroyingEnemyFlag			;but before that, check if we're destoying an enemy
 BEQ CODE_CEB8                			;if not, actually check jumpman's states
 JMP CODE_CF13					;
 
@@ -2487,7 +2508,7 @@ CMP #Phase_100M					;handle following fires in phase 3
 BEQ CODE_CF0D					;
 
 JSR CODE_DA16					;barrels of phase 1   
-JSR CODE_E19A                
+JSR CODE_E19A					;handle oil barrel flame
 JSR CODE_EC29
 JMP CODE_CF1C
   
@@ -2545,10 +2566,10 @@ BEQ CODE_CF55					;
 
 LDA #$00					;no more demo
 STA Demo_Active					;
-  
+
 LDA ControllerInput_Player1Previous		;and start game as normal (with last chosen option)
 JMP CODE_C98A					;
-  
+
 CODE_CF55:
 LDA ControllerInput_Player1Previous		;
 CMP Pause_HeldPressed				;holds pause and any other input, but it's most likely you hold pause input (after all it IS set after pause input)
@@ -2569,7 +2590,7 @@ LDA RenderMirror				;enable sprite render when unpausing
 AND #$EF					;
 STA RenderMirror				;
 JMP CODE_CF87					;disable pause flag (and play pause sound effect)
-  
+
 RETURN_CF79:
 RTS						;
 
@@ -2580,9 +2601,9 @@ STA Pause_Flag					;
 LDA Sound_Music					;back up music to restore it after unpausing
 STA Sound_MusicPauseBackup			;
 
-LDA #Sound_Music_Silence        		;silence music     
+LDA #Sound_Music_Silence        		;silence music
 STA Sound_Music					;
-  
+
 CODE_CF87:
 LDA #Sound_Fanfare_GamePause			;set pause timer
 STA Pause_Timer					;
@@ -2590,11 +2611,11 @@ STA Sound_Fanfare				;and sound effect (bit)
 RTS						;
 
 CODE_CF8F:
-STA Pause_HeldPressed
-  
+STA Pause_HeldPressed				;
+
 CODE_CF92:
 LDA Pause_Timer					;if pause timer isn't set, return
-BEQ CODE_CF9B
+BEQ CODE_CF9B					;
 
 DEC Pause_Timer					;decrease pause timer every frame
 RTS						;
@@ -2611,6 +2632,7 @@ STA RenderMirror				;
 RTS						;
  
 ;erase score sprite graphics
+;Score_Remove_CFA8:
 CODE_CFA8:
 LDX #$00					;
 LDY #$00					;
@@ -2624,18 +2646,18 @@ STA Score_OAM_Y,Y				;
 STA Score_OAM_Y+4,Y				;
   
 CODE_CFB8:
-INX                      
-INY                      
-INY                      
-INY                      
-INY                      
-INY                      
-INY
-INY
-INY
-CPX #$02                 
-BMI LOOP_CFAC                
-RTS
+INX						;
+INY						;
+INY						;
+INY						;
+INY						;
+INY						;
+INY						;
+INY						;
+INY						;
+CPX #$02					;run through all score sprites
+BMI LOOP_CFAC					;
+RTS						;
 
 ;score sprite functionality (graphics, score addition)
 ;init?
@@ -2673,8 +2695,8 @@ STA Score_OAM_Tile+4,Y				;
 LDX $0F						;load score sprite index i assume
 LDA #$03					;timer
 STA Timer_Score,X				;decreases every few frames
-RTS
-  
+RTS						;
+
 CODE_CFF9:
 INY						;get next OAM slot pair
 INY						;which means inc Y by  8
@@ -2754,7 +2776,7 @@ LDX PhaseNo					;100M means bolts
 CPX #Phase_100M					;
 BEQ CODE_D063					;
 
-LDA $5A                  
+LDA $5A
 BEQ RETURN_D0BF                
 DEX  
 LDA DATA_C1FA,X              
@@ -2770,7 +2792,7 @@ LOOP_D065:
 LDA $C1,X                
 BEQ RETURN_D0BF                
 INX                      
-STX $044F                
+STX $044F					;amount of remaining bolts (or rather amount of removed ones?)
 CPX #$08                 
 BNE LOOP_D065                
 JMP CODE_D086
@@ -4514,7 +4536,7 @@ CODE_D98D:
 STA $5A                  
 RTS                      
 
-;used to check for level boundaries/walls?
+;used to check for level boundaries/walls
 CODE_D990:
 LDA Direction					;check direction
 CMP #Input_Right				;right boundary
@@ -4620,22 +4642,22 @@ RTS
 CODE_DA16:
 JSR CODE_E166
 
-LDA #$00                 
-STA $5D
+LDA #$00					;
+STA Barrel_CurrentIndex				;
 
 JP_LOOP_DA19:
 LOOP_DA1D:
-JSR CODE_EFD5
+JSR GetBarrelOAM_EFD5				;
 
-LDA $0200,X              
-CMP #$FF                 
-BNE CODE_DA3D
+LDA OAM_Y,X					;see if the barrel doesn't exist
+CMP #$FF					;
+BNE CODE_DA3D					;it does, run
 
 LDA Timer_KongSpawn				;check if timer for barrel spawn is up
 BNE CODE_DA40					;if not, dont spawn
 
 LDA #$80					;enable a barrel? i assume this is a "flag".
-LDX $5D						;load barrel index
+LDX Barrel_CurrentIndex				;load barrel index
 STA $5E,X					;store enable bit
 
 LDA #$10					;barrel hold timer, basically it'll stay in place for this amount of frames
@@ -4649,17 +4671,17 @@ CODE_DA3D:
 JSR CODE_DA4C					;run barrel code
   
 CODE_DA40:
-LDA $5D						;BarrelIndex = BarrelIndex + 1        
-CLC						;makes me think that this was either written in higher level language or the programmer was just incompetent/inexpirienced/lazy (or all at once)
+LDA Barrel_CurrentIndex				;BarrelIndex = BarrelIndex + 1        
+CLC						;makes me think that this was either written in higher level language or the programmer was just lazy to optimize)
 ADC #$01					;INC BarrelIndex would look like BarrelIndex++ (i admit i don't know much about C, so plz don't kill me if im wrong)
-STA $5D						;anyway, yeah... a way to go
+STA Barrel_CurrentIndex						;anyway, yeah... a way to go
 CMP #$09					;well, you could INC then LDA, it'd still be more optimal.
 
 If Version = JP
-BEQ JP_RETURN_DA4A				;
-JMP JP_LOOP_DA19				;bad nintendo, bad!
+  BEQ JP_RETURN_DA4A				;
+  JMP JP_LOOP_DA19				;bad nintendo, bad!
 else
-BNE LOOP_DA1D					;wow, they actually optimized something in this code in revision 1! :clap: :clap: :clap:
+  BNE LOOP_DA1D					;wow, they actually optimized something in this code in revision 1! :clap: :clap: :clap:
 endif
 
 JP_RETURN_DA4A:
@@ -4722,7 +4744,7 @@ JSR CODE_DF07
 RTS
 
 CODE_DA9C:
-JSR CODE_EFD5					;
+JSR GetBarrelOAM_EFD5				;
 
 LDA #$30                 
 STA $00
@@ -4801,7 +4823,7 @@ LDA #$55
 JSR CODE_DFE4                
 BNE CODE_DB21
 
-JSR CODE_EFD5
+JSR GetBarrelOAM_EFD5
 
 LDA #$4D                 
 STA $00
@@ -4838,9 +4860,9 @@ BNE CODE_DB34
 RTS						;untriggered
 
 CODE_DB34:
-JSR CODE_EFD5					;get barrel's index?
-PHA
-JSR CODE_EAEC
+JSR GetBarrelOAM_EFD5				;get barrel's OAM
+PHA						;
+JSR EntityPosToScratch_EAEC			;barrel's pos
 
 LDA $01						;
 JSR CODE_E016					;get which platform the barrel's on based on Y-pos
@@ -4933,7 +4955,7 @@ BEQ CODE_DBCD					;equal or less, spawn flame
 BCC CODE_DBCD					;
 RTS						;
 
-CODE_DBCD:    
+CODE_DBCD:
 LDA #$03                 
 STA $02
  
@@ -5014,10 +5036,10 @@ CODE_DC30:
 LDA #$55                 
 JSR CODE_DFE4                
 BEQ RETURN_DC68                
-JSR CODE_EFD5                
+JSR GetBarrelOAM_EFD5
 STX $04
  
-JSR CODE_EAEC                
+JSR EntityPosToScratch_EAEC
 INC $01
 
 LDY $5D                  
@@ -5057,10 +5079,10 @@ BNE CODE_DC71
 RTS						;untriggered
 
 CODE_DC71:
-JSR CODE_EFD5                
+JSR GetBarrelOAM_EFD5
 STX $04
 
-JSR CODE_EAEC
+JSR EntityPosToScratch_EAEC
 
 INC $01                  
 LDA $01                  
@@ -5128,10 +5150,10 @@ BNE CODE_DCD8
 RTS
 
 CODE_DCD8:
-JSR CODE_EFD5                
+JSR GetBarrelOAM_EFD5
 STX $04
 
-JSR CODE_EAEC
+JSR EntityPosToScratch_EAEC
 
 LDA $01                  
 JSR CODE_E016
@@ -5194,10 +5216,10 @@ BNE CODE_DD3A
 RTS
 
 CODE_DD3A:
-JSR CODE_EFD5
+JSR GetBarrelOAM_EFD5
 STX $04
 
-JSR CODE_EAEC
+JSR EntityPosToScratch_EAEC
 
 LDA $01                  
 JSR CODE_E016
@@ -5278,7 +5300,7 @@ LDA #$38
   
 CODE_DDB2:
 JSR CODE_C853                
-JSR CODE_EFD5                
+JSR GetBarrelOAM_EFD5
 STX $04
 
 LDA $0200,X              
@@ -5301,7 +5323,7 @@ LDA #$C1
 STA $5E,X                
  
 CODE_DDD7:
-JSR CODE_EFD5
+JSR GetBarrelOAM_EFD5
 
 STX $04                  
 LDX $5D                  
@@ -5448,11 +5470,12 @@ RETURN_DEA4:
 RTS                      
 
 CODE_DEA5:
-JSR CODE_EFD5                
+JSR GetBarrelOAM_EFD5
 STX $04
 
-JSR CODE_EAEC                
-DEC $00                  
+JSR EntityPosToScratch_EAEC
+DEC $00
+
 LDA $042B                
 SEC                      
 SBC #$01                 
@@ -5518,10 +5541,10 @@ BNE CODE_DF0F
 RTS
 
 CODE_DF0F:
-JSR CODE_EFD5                
-STX $04
+JSR GetBarrelOAM_EFD5				;
+STX $04						;
 
-JSR CODE_EAEC
+JSR EntityPosToScratch_EAEC
 
 INC $01                  
 LDA $0201,X              
@@ -5661,36 +5684,35 @@ ADC $01
 STA $C0                  
 RTS                      
 
-;something to do with barrel's BG priority
+;hide barrel behind BG if low enough (so it goes behind the oil barrel)
 CODE_DFC3:
 LDX $5D    
 LDA $68,X
 CMP #$01
 BNE RETURN_DFE3 
 
-JSR CODE_EFD5                
-LDA $0203,X              
-CMP #$30                 
-BCS RETURN_DFE3
+JSR GetBarrelOAM_EFD5				;
+LDA OAM_X,X					;check barrel's X-pos, if it's close enough to the barrel
+CMP #$30					;
+BCS RETURN_DFE3					;
 
-;set low priority or high or w/e idk
-LDA #$23                 
-STA $0202,X              
-STA $0206,X              
-STA $020A,X              
-STA $020E,X
+;set low priority (and keep it's palette of course)
+LDA #$23					;
+STA OAM_Prop,X					;
+STA OAM_Prop+4,X				;
+STA OAM_Prop+8,X				;
+STA OAM_Prop+12,X				;
   
 RETURN_DFE3:
-RTS                      
+RTS						;
 
 CODE_DFE4:
 STA $0A						;
 STA $0B						;
 
-;sprite-related (various objects, like barrels, platforms, etc.)
-;(seems to be movement related as it loads some values from before that are based on difficulty)
+;barrel-related
 CODE_DFE8:
-LDX $5D					;
+LDX Barrel_CurrentIndex				;
 INC $8A,X					;timer
 
 LDA $8A,X					;if negative (for whatever reason)
@@ -5875,19 +5897,20 @@ JMP CODE_E0EC
 CODE_E0D1:
 JSR CODE_E0F1
 
-LDY #$89                 
-CMP #$C4                 
-BEQ CODE_E109                
-JMP CODE_E0EC
+;if not terminated by PLAs, means the barrel isn't at an X-pos where the ladder can be.
+LDY #$89
+CMP #$C4					;check if very far to the right
+BEQ CODE_E109					;can disappear, maybe?
+JMP CODE_E0EC					;not on the ladder is all that's clear
   
 CODE_E0DD:           
 JSR CODE_E0F1
 
 LDY #$71                 
-CMP #$B4                 
+CMP #$B4					;check position where the barrel can fall down off the ledge (i think?)
 BEQ CODE_E109                
 JMP CODE_E0EC
- 
+
 CODE_E0E9:  
 JSR CODE_E0F1
  
@@ -5904,7 +5927,7 @@ LDY DATA_C172,X
 CMP DATA_C177,X              
 BEQ CODE_E107
 
-LDY DATA_C17C,X              
+LDY DATA_C17C,X					;two different ladder positions?
 CMP DATA_C181,X              
 BEQ CODE_E107                
 RTS
@@ -6038,13 +6061,13 @@ RETURN_E199:
 RTS
 
 CODE_E19A:
-LDA $AD                  
-BNE CODE_E19F
-RTS                      
+LDA Flame_State					;see if oil barrel flame is a thing
+BNE CODE_E19F					;if so, run it's code
+RTS						;
 
 CODE_E19F:  
-CMP #$01                 
-BNE CODE_E1BF
+CMP #$01					;if not init, run main
+BNE CODE_E1BF					;
 
 ;initalize oil flame (is it used multiple times (each time new flame is spawned)
 LDA #Flame_XPos					;flame X-pos
@@ -6062,10 +6085,10 @@ STA $03						;
 LDA #Flame_OAM_Slot*4				;
 JSR CODE_F080					;draw em
 
-LDA #$02                 
-STA Flame_State					;no more init, can run normally
-JMP CODE_E1E0					;something else, probably flame spawn
-  
+LDA #$02					;\
+STA Flame_State					;/no more init, can run normally
+JMP CODE_E1E0					;and flame animation ofc
+
 CODE_E1BF:
 LDA Timer_FlameAnimation			;don't animate for
 BNE RETURN_E1E4					;
@@ -6084,83 +6107,85 @@ JMP CODE_E1D7					;
 
 CODE_E1D5:
 LDA #Flame_GFXFrame_Frame2			;
-  
+
 CODE_E1D7:
 STA OAM_Y,X					;not actual Y-pos due to offset, store sprite tiles
 CLC						;
 ADC #$01					;and next tile gets a +1
 STA OAM_Y+4,X					;
-  
+
 CODE_E1E0:
 LDA #Time_ForFlameAnim				;
 STA Timer_FlameAnimation			;set timer
-  
+
 RETURN_E1E4:
 RTS						;
 
-;must be fire enemy related. run their AI and stuff
+;Run fire enemy AI and stuff
 CODE_E1E5:
-LDA #$00
-STA $AE
+LDA #$00					;initialize flame enemy
+STA FlameEnemy_CurrentIndex			;
 
 LOOP_E1E9:
-JSR CODE_EFDD
+JSR GetFlameEnemyOAM_EFDD			;get OAM
 
-LDA $0200,X              
-CMP #$FF                 
-BNE CODE_E225
+LDA OAM_Y,X					;see if the enemy's on screen
+CMP #$FF					;yes, run
+BNE CODE_E225					;
 
-LDA $53                  
-CMP #$01                 
-BEQ CODE_E200                
-CMP #$04                 
-BEQ CODE_E213                
-JMP CODE_E225					;untriggered
+LDA PhaseNo					;check for phase
+CMP #Phase_25M					;25M - must come out of the barrel
+BEQ CODE_E200					;
+CMP #Phase_100M					;100M - appear out of thin air
+BEQ CODE_E213					;
+JMP CODE_E225					;flames appear in 75M, however they're already placed during init (they don't spawn during gameplay), so this jump never triggers
 
+;flames appear in 25M
 CODE_E200:
-LDA $40                  
-BNE CODE_E228
-  
-LDA $AD                  
-BEQ CODE_E228    
-CMP #$02                 
-BNE CODE_E228
+LDA Timer_FlameEnemySpawn			;flame appear timer...
+BNE CODE_E228					;don't appear
 
-LDA #$19                 
-STA $40                  
-JMP CODE_E21F
+LDA Flame_State					;there is no index 0?
+BEQ CODE_E228					;
+CMP #$02					;if not 2, return (what)
+BNE CODE_E228					;
 
+LDA #$19					;
+STA Timer_FlameEnemySpawn			;
+JMP CODE_E21F					;
+
+;flames appear in 100M
 CODE_E213:
-LDA $40
-BNE CODE_E228
+LDA Timer_FlameEnemySpawn			;don't appear yet
+BNE CODE_E228					;
 
-JSR CODE_EAF7                
-LDA DATA_C466,X              
-STA $40
+JSR CODE_EAF7					;get difficulty
+LDA DATA_C466,X					;
+STA Timer_FlameEnemySpawn			;and set timer for next flame spawn
 
 CODE_E21F:
-LDA #$06                 
-LDX $AE                  
-STA $AF,X
-  
+LDA #FlameEnemy_State_SpawnINIT			;initialize flame enemy
+LDX FlameEnemy_CurrentIndex			;
+STA FlameEnemy_State,X				;
+
 CODE_E225:
-JSR CODE_E250
+JSR CODE_E250					;run flame enemy's code!
 
 CODE_E228:
-LDX $53                  
-DEX                      
-INC $AE                  
-LDA $AE                  
-CMP DATA_C1F6,X              
-BEQ CODE_E237                
-JMP LOOP_E1E9
+LDX PhaseNo					;
+DEX						;
+INC FlameEnemy_CurrentIndex			;process next flame
+LDA FlameEnemy_CurrentIndex			;
+CMP DATA_C1F6,X					;check flame max
+BEQ CODE_E237					;processed all
+JMP LOOP_E1E9					;
 
 CODE_E237:
-LDA $53                  
-CMP #$03                 
-BEQ RETURN_E24F
+LDA PhaseNo					;
+CMP #Phase_75M					;75M - return
+BEQ RETURN_E24F					;
 
-LDA $3B                  
+LDA $3B						;initialize something?
 BNE RETURN_E24F
 
 LDA #$00                 
@@ -6177,75 +6202,75 @@ RTS
 
 ;handle flame enemies!
 CODE_E250:  
-LDX $AE                  
-LDA $AF,X
+LDX FlameEnemy_CurrentIndex			;
+LDA FlameEnemy_State,X				;check for state
 
-LOOP_E254:
-AND #$0F                 
-BEQ CODE_E292                
-CMP #$06
-BEQ CODE_E28F                
-CMP #$08                 
-BEQ CODE_E28F                
-CMP #$01                 
-BEQ CODE_E295                
-CMP #$02                 
-BEQ CODE_E29A                
-CMP #$03                 
-BEQ CODE_E2A1
+CODE_E254:
+AND #$0F					;if flame enemy state isn't in range between 00-0F
+BEQ CODE_E292					;just animate i think
+CMP #FlameEnemy_State_SpawnINIT			;
+BEQ CODE_E28F					;init spawn
+CMP #FlameEnemy_State_SpawnFromOil		;
+BEQ CODE_E28F					;actual spawn
+CMP #FlameEnemy_State_MoveRight			;
+BEQ CODE_E295					;move right i think
+CMP #FlameEnemy_State_MoveLeft			;
+BEQ CODE_E29A					;move left i think
+CMP #$03					;
+BEQ CODE_E2A1					;idk i think
  
-LDA $53                  
-CMP #$03                 
-BEQ CODE_E278                
-JSR CODE_E2B6                
-JMP CODE_E280
-   
+LDA PhaseNo					;
+CMP #Phase_75M					;if phase is 75M
+BEQ CODE_E278					;pure RNG movement
+JSR CODE_E2B6					;something else (must be RNG too?)
+JMP CODE_E280					;facing
+
 CODE_E278:
-LDA RNG_Value+1,X
-AND #$03                 
-LDX $AE                  
-STA $AF,X
+LDA RNG_Value+1,X				;facing depends on RNG
+AND #$03					;
+LDX FlameEnemy_CurrentIndex			;
+STA FlameEnemy_State,X				;
 
 CODE_E280:
-LDA $AF,X                
-CMP #$01                 
-BEQ CODE_E28A                
-CMP #$02                 
-BNE CODE_E28C
+LDA FlameEnemy_State,X				;
+CMP #FlameEnemy_State_MoveRight			;
+BEQ CODE_E28A					;
+CMP #FlameEnemy_State_MoveLeft			;if NOT moving left
+BNE CODE_E28C					;skip
 
 CODE_E28A:
-STA $B3,X
-  
+STA FlameEnemy_Direction,X			;decide direction for when standing still
+
 CODE_E28C:
-JMP LOOP_E254
-  
+JMP CODE_E254					;process new state
+
 CODE_E28F:
-JMP CODE_E538
+JMP CODE_E538					;handle flame enemy spawn
 
 CODE_E292:
-JMP CODE_E2F9
-  
-CODE_E295:
-LDA #$00                 
-JMP CODE_E29C
-  
-CODE_E29A:
-LDA #$01
-  
-CODE_E29C:
-STA $99                  
-JMP CODE_E368
-  
-CODE_E2A1:
-LDA $53                  
-CMP #$01                 
-BNE CODE_E2B3
+JMP CODE_E2F9					;move down and up when standing still (animation)
 
-JSR CODE_E626                
-LDX $AE                  
-LDA $AF,X                
-BNE CODE_E2B3                
-JMP CODE_E292
+CODE_E295:
+LDA #$00					;moving right
+JMP CODE_E29C					;
+
+CODE_E29A:
+LDA #$01					;moving left
+
+CODE_E29C:
+STA FlameEnemy_MoveDirection			;
+JMP CODE_E368					;process movenent and stuff
+
+CODE_E2A1:
+LDA PhaseNo					;check phase...
+CMP #Phase_25M					;
+BNE CODE_E2B3					;
+
+JSR CODE_E626					;check for special state...
+LDX FlameEnemy_CurrentIndex			;
+LDA FlameEnemy_State,X				;
+BNE CODE_E2B3					;
+JMP CODE_E292					;animate
   
 CODE_E2B3:
 JMP CODE_E41B
@@ -6299,41 +6324,43 @@ LDY #$03
 CODE_E2F6:
 STY $AF,X                
 RTS
-  
+
 CODE_E2F9:
-LDA #$55                 
-STA $0A                  
-STA $0B
+LDA #$55					;animate every x frames (still unsure how this works)
+STA $0A						;
+STA $0B						;
 
-JSR CODE_E806                
-BNE CODE_E305
-RTS
+JSR CODE_E806					;
+BNE CODE_E305					;
+RTS						;
 
+;animate when normally walking (move up 'n down graphically)
 CODE_E305:
-JSR CODE_EFDD                
-STX $04
-JSR CODE_EAEC 
+JSR GetFlameEnemyOAM_EFDD			;get flame's OAM slots
+STX $04						;store em here
+JSR EntityPosToScratch_EAEC			;
   
-LDX $AE                  
-LDA $AF,X                
-CMP #$20                 
-BNE CODE_E31A
+LDX FlameEnemy_CurrentIndex			;
+LDA FlameEnemy_State,X				;
+CMP #FlameEnemy_State_NoGFXShift		;
+BNE CODE_E31A					;
 
-LDA #$FF                 
-STA $AF,X                
-RTS                      
+LDA #FlameEnemy_State_GFXShiftDown		;
+STA FlameEnemy_State,X				;
+RTS						;
 
 CODE_E31A:
-CMP #$10                 
-BEQ CODE_E323                
-DEC $01                  
-JMP CODE_E325
+CMP #FlameEnemy_State_GFXShiftUp		;
+BEQ CODE_E323					;
+
+DEC $01						;move down
+JMP CODE_E325					;
 
 CODE_E323:
-INC $01
+INC $01						;
 
-;i keep seeing the same repeated code, see CODE_E3ED
-CODE_E325:  
+;i keep seeing the same repeated code, see CODE_E3ED. this one for animation when on the ladder
+CODE_E325:
 LDA $04						;OAM
 TAY						;
 INY						;get tile (not Y-pos)
@@ -6342,7 +6369,7 @@ LDX PhaseNo					;
 CPX #Phase_100M					;
 BEQ CODE_E340					;
 CMP #FlameEnemy_GFXFrame_Frame2			;
-BEQ CODE_E33B
+BEQ CODE_E33B					;
 
 LDA #FlameEnemy_GFXFrame_Frame2			;
 JMP CODE_E34B					;
@@ -6369,47 +6396,47 @@ LDA $B3,X					;something to do with direction i think
 LSR A						;
 JSR SpriteDrawingEngine_F096			;draw the flame enemy
 
-LDX $AE                  
-LDA $AF,X                
-CMP #$10                 
-BEQ CODE_E363
+LDX FlameEnemy_CurrentIndex			;
+LDA FlameEnemy_State,X				;
+CMP #FlameEnemy_State_GFXShiftUp		;don't shift next time
+BEQ CODE_E363					;
 
-LDA #$10                 
-JMP CODE_E365
+LDA #FlameEnemy_State_GFXShiftUp		;
+JMP CODE_E365					;
   
 CODE_E363:
-LDA #$20
+LDA #FlameEnemy_State_NoGFXShift		;
   
 CODE_E365:
-STA $AF,X                
-RTS                      
+STA FlameEnemy_State,X				;
+RTS						;
 
 ;something to do with flame enemies
 CODE_E368:
-LDA #$55                 
-STA $0A                  
-STA $0B
+LDA #$55					;
+STA $0A						;also timing-related
+STA $0B						;
 
-JSR CODE_E806                
-BNE CODE_E374                
-RTS
+JSR CODE_E806					;also time
+BNE CODE_E374					;also run
+RTS						;also also
 
 CODE_E374:  
-JSR CODE_EFDD                
-STX $04                  
-JSR CODE_EAEC
+JSR GetFlameEnemyOAM_EFDD			;get OAM
+STX $04						;temp store
+JSR EntityPosToScratch_EAEC			;
 
-LDA $99                  
-BNE CODE_E385
+LDA FlameEnemy_MoveDirection			;this is enemy's direction
+BNE CODE_E385					;if moving left, mvoe left
      
-INC $00                  
-JMP CODE_E387
+INC $00						;move right
+JMP CODE_E387					;
   
 CODE_E385:
-DEC $00
+DEC $00						;move left
 
 CODE_E387:   
-LDA $00                  
+LDA $00						;move up'n down at certain positions
 AND #$0F                 
 CMP #$04                 
 BEQ CODE_E396                
@@ -6455,62 +6482,63 @@ LDX $AE
 STA $AF,X                
 RTS                      
 
+;flame enemy animation...
 CODE_E3CE:
-LDA $99                  
-BEQ CODE_E3ED
+LDA FlameEnemy_MoveDirection			;hardcoded check for ladder pos depending on direction
+BEQ CODE_E3ED					;moving right, no worries
 
-LDA $00                  
+LDA $00						;if reached this position, make it climb the ladder (i think)
 CMP #$0C                 
-BEQ CODE_E3DD                
-BCC CODE_E3E6                
-JMP CODE_E3ED
+BEQ CODE_E3DD					;if at this position, make sure to think about moving further
+BCC CODE_E3E6					;don't move if less, please turn away
+JMP CODE_E3ED					;move freely
 
 CODE_E3DD:  
-LDA #$00                 
-LDX $AE                  
-STA $AF,X                
-JMP CODE_E3ED
+LDA #$00					;set to stop movement & check for ladders?
+LDX FlameEnemy_CurrentIndex			;
+STA FlameEnemy_State,X				;
+JMP CODE_E3ED					;
 
-CODE_E3E6:  
-LDA #$00                 
-LDX $AE                  
-STA $AF,X                
-RTS
+CODE_E3E6:
+LDA #$00					;copy-paste code strikes back
+LDX FlameEnemy_CurrentIndex			;
+STA FlameEnemy_State,X				;
+RTS						;
 
 ;another routine related with animation, CODE_E50C is similar to this
 CODE_E3ED:
-LDA $04							;
-TAY							;
-INY							;get sprite tile
-LDA OAM_Y,Y						;
-LDX PhaseNo						;if in 100M, use different frames
-CPX #$04						;
-BEQ CODE_E408						;
-CMP #FlameEnemy_GFXFrame_Frame2				;standart animation procedure
-BCS CODE_E403						;
+LDA $04						;
+TAY						;
+INY						;get sprite tile
+LDA OAM_Y,Y					;
+LDX PhaseNo					;if in 100M, use different frames
+CPX #Phase_100M					;
+BEQ CODE_E408					;
+CMP #FlameEnemy_GFXFrame_Frame2			;standart animation procedure
+BCS CODE_E403					;
 
-LDA #FlameEnemy_GFXFrame_Frame2				;
-JMP CODE_E413						;
+LDA #FlameEnemy_GFXFrame_Frame2			;
+JMP CODE_E413					;
 
 CODE_E403:
-LDA #FlameEnemy_GFXFrame_Frame1				;
-JMP CODE_E413						;
+LDA #FlameEnemy_GFXFrame_Frame1			;
+JMP CODE_E413					;
 
 CODE_E408:
-CMP #FlameEnemy100M_GFXFrame_Frame2			;
-BCS CODE_E411						;
+CMP #FlameEnemy100M_GFXFrame_Frame2		;
+BCS CODE_E411					;
 
-LDA #FlameEnemy100M_GFXFrame_Frame2			;
-JMP CODE_E413						;
+LDA #FlameEnemy100M_GFXFrame_Frame2		;
+JMP CODE_E413					;
 
 CODE_E411:
-LDA #FlameEnemy100M_GFXFrame_Frame1			;
+LDA #FlameEnemy100M_GFXFrame_Frame1		;
 
 CODE_E413:
-JSR SpriteDrawingPREP_StoreTile_EAD4			;
+JSR SpriteDrawingPREP_StoreTile_EAD4		;
 
-LDA $99							;contains drawing method? probably something about horizontal flipping
-JMP SpriteDrawingEngine_F096				;
+LDA FlameEnemy_MoveDirection			;draw flip according to movement direction
+JMP SpriteDrawingEngine_F096			;
 
 CODE_E41B:
 LDX $AE                  
@@ -6551,9 +6579,9 @@ BNE CODE_E451
 RTS                      
 
 CODE_E451:
-JSR CODE_EFDD                
+JSR GetFlameEnemyOAM_EFDD
 STX $04                  
-JSR CODE_EAEC
+JSR EntityPosToScratch_EAEC
        
 LDX $AE                  
 LDA $E8,X                
@@ -6711,70 +6739,70 @@ JMP CODE_F088					;draw the flame
 
 ;handle special kinda flames
 CODE_E538:
-LDX $AE                  
-LDA $AF,X                
-CMP #$06                 
-BEQ CODE_E548                
-CMP #$08					;
+LDX FlameEnemy_CurrentIndex			;
+LDA FlameEnemy_State,X				;
+CMP #FlameEnemy_State_SpawnINIT			;spawn from oil barrel (init)
+BEQ CODE_E548					;
+CMP #FlameEnemy_State_SpawnFromOil		;
 BEQ CODE_E545					;spawned from oil barrel
-RTS						;untriggered
+RTS						;untriggered (and unecessary, along with couple lines above
 
 CODE_E545:
-JMP CODE_E59F
+JMP CODE_E59F					;spawn from oil barrel
 
 CODE_E548:
-LDA $53                  
-CMP #$01                 
-BEQ CODE_E553                
-CMP #$04                 
-BEQ CODE_E564                
+LDA PhaseNo					;how to spawn the flame enemy?
+CMP #Phase_25M					;jump out of the oil barrel
+BEQ CODE_E553					;
+CMP #Phase_100M					;just appear
+BEQ CODE_E564					;
 RTS						;untriggered
 
 ;spawn a flame enemy from lit up oil barrel
 CODE_E553:      
-LDA #$20                 
-STA $00
+LDA #$20					;set initial positions
+STA $00						;this is X-pos
 
-LDA #$B8                 
-STA $01
+LDA #$B8					;Y-pos
+STA $01						;
 
-LDX $AE                  
-LDA #$08                 
-STA $AF,X                
-JMP CODE_E592
+LDX FlameEnemy_CurrentIndex			;
+LDA #FlameEnemy_State_SpawnFromOil		;spawn from the oil barrel
+STA FlameEnemy_State,X				;
+JMP CODE_E592					;
 
 CODE_E564:
-LDA $0203                
-CMP #$78                 
-BCC CODE_E570
+LDA Jumpman_OAM_X				;check player's pos
+CMP #$78					;
+BCC CODE_E570					;
 
-LDY #$00                 
-JMP CODE_E572
+LDY #$00					;
+JMP CODE_E572					;spawn at different positions (on the left)
 
 ;spawn flame enemies from 100M
 CODE_E570:  
-LDY #$08
+LDY #$08					;spawn on the right by default
   
 CODE_E572:
-STY $0C
+STY $0C						;
 
-LDA RNG_Value+1			;spawn x-pos and Y-pos seems to be RNG dependent
-AND #$03                 
-ASL A                    
-CLC                      
-ADC $0C                  
-TAX                      
-LDA DATA_C3CE,X              
-STA $00
+LDA RNG_Value+1					;spawn x-pos and Y-pos seems to be RNG dependent
+AND #$03					;
+ASL A						;
+CLC						;
+ADC $0C						;spawn on the left or the right
+TAX						;
+LDA DATA_C3CE,X					;
+STA $00						;X-pos
 
-LDA DATA_C3CE+1,X              
-STA $01
+LDA DATA_C3CE+1,X				;
+STA $01						;and Y-pos
 
-LDX $AE                  
-LDA #$00                 
-STA $AF,X
+LDX FlameEnemy_CurrentIndex			;
+LDA #$00					;no init
+STA FlameEnemy_State,X				;
 
-LDA #FlameEnemy100M_GFXFrame_Frame1		;
+LDA #FlameEnemy100M_GFXFrame_Frame1		;set initial frame
 JMP CODE_E594					;
 
 CODE_E592:  
@@ -6782,17 +6810,17 @@ LDA #FlameEnemy_GFXFrame_Frame1			;
   
 CODE_E594:
 JSR SpriteDrawingPREP_StoreTile_EAD4		;
-JSR CODE_EFDD					;get OAM
+JSR GetFlameEnemyOAM_EFDD			;get OAM
 STA $04						;
 JMP CODE_F082					;a new challenger approaches...
 
 ;the flame that jumps out of the oil barrel
 CODE_E59F:  
-JSR CODE_EFDD					;get flame's proper OAM slots
+JSR GetFlameEnemyOAM_EFDD			;get flame's proper OAM slots
 STX $04						;
-JSR CODE_EAEC					;some other prep i think (i forgot)
+JSR EntityPosToScratch_EAEC			;and position
 
-LDA OAM_Tile,X					;ok? (don't actually update the sprite tile number)
+LDA OAM_Tile,X					;ok? (doesn't actually update the sprite tile number)
 JSR SpriteDrawingPREP_StoreTile_EAD4		;
 
 LDA PhaseNo					;
@@ -6811,8 +6839,8 @@ BCC CODE_E5E5					;if less than, skip
 CODE_E5BE:
 INC $01						;move down
 LDA $01						;
-CMP #$C5                 
-BNE CODE_E5E5
+CMP #$C5					;
+BNE CODE_E5E5					;
 
 LDA #$00					;
 LDX FlameEnemy_CurrentIndex			;
@@ -6820,11 +6848,11 @@ STA FlameEnemy_State,X				;become normal
 
 DEC $00						;
 LDA $00						;
-CMP #$68                 
-BCS CODE_E5D9
+CMP #$68					;
+BCS CODE_E5D9					;
 
-INC $01                  
-JMP CODE_E5DB
+INC $01						;
+JMP CODE_E5DB					;
 
 CODE_E5D9:  
 DEC $01						;unused, because flame becomes normal and doesn't execure anymore of this, meaning the check for this to run can't be triggered
@@ -6891,15 +6919,15 @@ LDA #$01
 RTS
 
 CODE_E626:
-LDX $AE                  
-LDA $AF,X                
-CMP #$13                 
-BNE CODE_E62F                
-RTS
+LDX FlameEnemy_CurrentIndex
+LDA FlameEnemy_State,X				;what is this check? to get to this, you need FlameEnemyState = 3, of course this always triggers
+CMP #$13					;
+BNE CODE_E62F					;
+RTS						;
 
 CODE_E62F:
-JSR CODE_EFDD                
-JSR CODE_EAEC
+JSR GetFlameEnemyOAM_EFDD
+JSR EntityPosToScratch_EAEC
 
 LDX $AE                  
 LDA $E0,X                
@@ -7132,7 +7160,7 @@ RTS
 CODE_E770:
 STA $09
 
-JSR CODE_EFDD
+JSR GetFlameEnemyOAM_EFDD
 LDA $0203,X              
 STA $0A
 
@@ -7241,6 +7269,7 @@ LDA ($07),Y
 STA $AF,X                
 RTS
 
+;something about animating flame enemy
 CODE_E806:
 LDX $AE                  
 INC $E4,X                
@@ -7506,7 +7535,7 @@ ADC #$30					;and + 30
 TAX						;
 STX $04						;
 
-JSR CODE_EAEC					;get x and y-pos
+JSR EntityPosToScratch_EAEC			;get x and y-pos
 CMP #$FF					;if not even onscreen, try to spawn (?)
 BEQ CODE_E9F0					;
 
@@ -7789,8 +7818,8 @@ STA $01						;
 RTS						;
 
 ;same as above but for other entities
-;EntityPosToScratch_EAEC:
-CODE_EAEC:
+;CODE_EAEC:
+EntityPosToScratch_EAEC:
 LDA OAM_X,X					;entity's x-pos
 STA $00						;
 
@@ -7808,7 +7837,7 @@ TAX						;
 CPX #$04					;
 BCC RETURN_EB05					;if it's more than 4, limit
   
-LDX #$04					;maximus of speed values for lifts
+LDX #$04					;maximum of speed values
   
 RETURN_EB05:
 RTS						;
@@ -8068,7 +8097,7 @@ STA $5D
 CODE_EC48:
 LDA #$3A
 JSR CODE_C847
-JSR CODE_EFD5
+JSR GetBarrelOAM_EFD5
 
 LDA PhaseNo					;interesting isn't it?
 CMP #Phase_25M					;
@@ -8079,7 +8108,7 @@ ADC #$30					;
 TAX						;
 
 CODE_EC5B:
-JSR CODE_EAEC                
+JSR EntityPosToScratch_EAEC
 JSR CODE_EFEF                
 BNE CODE_ECA7					;if made a contact with the barrel, dead
 
@@ -8149,11 +8178,12 @@ BEQ RETURN_ECBE					;don't care about hammer
 LDA Jumpman_State				;if holding a hammer
 CMP #Jumpman_State_Hammer			;
 BNE RETURN_ECBE					;no? return
-JMP CODE_ECBF					;yeah yeah
+JMP CODE_ECBF					;yeah yeah, run collision
 
 RETURN_ECBE:
-RTS
+RTS						;
 
+;check hammer<->hazard collision
 CODE_ECBF:
 LDA Jumpman_HeldHammerIndex			;are we holding a hammer?
 BNE CODE_ECC6					;(answer - this check is reduntant)
@@ -8209,94 +8239,98 @@ ADC #$06					;
 STA $01						;
   
 CODE_ED07:
-LDA #$3C                 
-JSR CODE_EFE8
+LDA #$3C					;get hammer's hitbox
+JSR CODE_EFE8					;
 
-LDA $53                  
-CMP #$01                 
-BNE CODE_ED34
+LDA PhaseNo					;
+CMP #Phase_25M					;if we're NOT in 25M, that means can interact with flamies ONLY
+BNE CODE_ED34					;
 
+;check hammer<->barrel interaction
 LDA #$00                 
-STA $5D
+STA Barrel_CurrentIndex
 
-CODE_ED16:
-JSR CODE_EFD5
-JSR CODE_EAEC
+LOOP_ED16:
+JSR GetBarrelOAM_EFD5				;
+JSR EntityPosToScratch_EAEC			;
 
-LDA #$3A                 
-JSR CODE_C847
-JSR CODE_EFEF                
-BNE CODE_ED57
+LDA #$3A					;
+JSR CODE_C847					;get barrel's hit box
 
-LDA $5D                  
-CLC                      
-ADC #$01                 
-STA $5D 
-CMP #$09                 
-BEQ CODE_ED85                
-JMP CODE_ED16
-  
+JSR CODE_EFEF					;collision
+BNE CODE_ED57					;happened!
+
+LDA Barrel_CurrentIndex				;
+CLC						;
+ADC #$01					;
+STA Barrel_CurrentIndex				;next barrel (could've used INC... which is exactly what is used for flames!)
+CMP #$09					;max barrels?
+BEQ CODE_ED85					;no destruction
+JMP LOOP_ED16					;
+
+;check hammer<->flame enemy interaction
 CODE_ED34:
 LDA #$00                 
 STA $AE
   
 LOOP_ED38:
-JSR CODE_EFDD                
-JSR CODE_EAEC
+JSR GetFlameEnemyOAM_EFDD
+JSR EntityPosToScratch_EAEC
 
 LDA #$3A                 
-JSR CODE_C847     
-JSR CODE_EFEF
-BNE CODE_ED57
+JSR CODE_C847
+
+JSR CODE_EFEF					;check collision
+BNE CODE_ED57					;success!
  
-INC $AE                  
-LDA $AE                  
-LDX $53                  
-DEX                      
-CMP DATA_C1F6,X              
-BEQ CODE_ED85                
-JMP LOOP_ED38
+INC FlameEnemy_CurrentIndex			;
+LDA FlameEnemy_CurrentIndex			;
+LDX PhaseNo					;
+DEX						;
+CMP DATA_C1F6,X					;went through all flames?
+BEQ CODE_ED85					;no destruction
+JMP LOOP_ED38					;loop
 
 ;enemy destruction (with a hammer)
 CODE_ED57:
-LDA #$02
-STA $FF
+LDA #Sound_Effect2_EnemyDestruct		;sound ofc
+STA Sound_Effect2				;
   
-LDA $00                  
-STA $05
+LDA $00						;not sure yet (X and Y-pos related)
+STA $05						;
 
-LDA $01                  
-STA $06
+LDA $01						;
+STA $06						;
 
-LDA $53                  
-CMP #$01
-BNE CODE_ED74
+LDA PhaseNo					;see if we've destroyed a barrel or a flanemy
+CMP #Phase_25M					;
+BNE CODE_ED74					;
 
-LDA #$00                 
-LDX $5D                  
-STA $68,X
+LDA #$00					;
+LDX Barrel_CurrentIndex				;
+STA Barrel_CurrentPlatformIndex,X		;not on any platform (because destroyed)
 
-LDA #$01                 
-JMP CODE_ED87
+LDA #$01					;yes destroying an enemy
+JMP CODE_ED87					;
 
 CODE_ED74:  
-LDA #$10                 
-STA $40
+LDA #$10					;set up a short timer
+STA Timer_FlameEnemySpawn			;
 
-LDA #$00                 
-LDX $AE                  
-STA $E0,X                
-STA $DB,X
+LDA #$00					;
+LDX FlameEnemy_CurrentIndex			;
+STA $E0,X					;some sprite tables for flame enemies (currently unknown)
+STA $DB,X					;one of them must be platform index
 
-LDA #$01                 
-JMP CODE_ED87
+LDA #$01					;yes destroying an enemy
+JMP CODE_ED87					;
 
 CODE_ED85:  
-LDA #$00
+LDA #$00					;not destroying an enemy
   
 CODE_ED87:
-STA $BF                  
-RTS                      
+STA Hammer_DestroyingEnemyFlag			;
+RTS						;
 
 CODE_ED8A:
 LDA #$00                 
@@ -8306,8 +8340,9 @@ LDA #$3A
 JSR CODE_C847
 
 LOOP_ED93:
-JSR CODE_EFDD                
-JSR CODE_EAEC                
+JSR GetFlameEnemyOAM_EFDD			;
+JSR EntityPosToScratch_EAEC			;get positions
+
 JSR CODE_EFEF                
 BNE CODE_EDAD
 
@@ -8403,27 +8438,29 @@ JSR CODE_DFE4
 BNE CODE_EE1A                
 RTS
 
+;this is used to handle destroyed enemy animation.
 CODE_EE1A:
-LDA $53                  
-CMP #$01                 
-BNE CODE_EE26                
-JSR CODE_EFD5                
-JMP CODE_EE29
+LDA PhaseNo					;flame enemy destruction is in other phases
+CMP #$01					;
+BNE CODE_EE26					;makes sense, since the player can't normally destroy the flame enemy in 25M (too low)
+
+JSR GetBarrelOAM_EFD5				;instead can destroy barrels
+JMP CODE_EE29					;
 
 CODE_EE26:
-JSR CODE_EFDD
+JSR GetFlameEnemyOAM_EFDD			;destroying flame enemy, get it's OAM slots
   
 CODE_EE29:
-STX $04
+STX $04						;save OAM slot
 
-JSR CODE_EAEC
+JSR EntityPosToScratch_EAEC
 
-LDA $BF                  
-CMP #$01                 
-BNE CODE_EE38
+LDA EnemyDestruction_Animation			;did we play the destruction sound?
+CMP #$01					;
+BNE CODE_EE38					;if yes, skip
 
-LDY #$02					;enemy is destroyed
-STY Sound_Effect2
+LDY #Sound_Effect2_EnemyDestruct		;enemy is destroyed
+STY Sound_Effect2				;
   
 CODE_EE38:
 CMP #$0B					;
@@ -8488,7 +8525,7 @@ LDY #$00
 LDX DATA_C5FF					;why not fixed value... again, this is a DK (NES) code we're talking about.
 
 CODE_EE8D:
-LDA UNUSED_C5C2,X				;and since we load "fixed" value i don't think loading these as table values is necessary
+LDA UNUSED_C5C1+1,X				;and since we load "fixed" value i don't think loading these as table values is necessary
 CMP $0203
 BNE CODE_EEE7
 
@@ -8566,7 +8603,7 @@ LDA UNUSED_C5AE,X
 CMP $0200                
 BNE CODE_EF2F
 
-LDA UNUSED_C5C2,X              
+LDA UNUSED_C5C1+1,X              
 CMP $0203                
 BNE CODE_EF2F
 
@@ -8697,7 +8734,7 @@ SEC
 SBC $043D,X              
 STA $042D,X
 
-LDA $01				;$01 is Jumpmans Y-pos (and some other other things
+LDA $01					;$01 is Jumpmans Y-pos (and some other other things
 SBC $043E,X              
 STA $01                  
 CLC                      
@@ -8710,30 +8747,34 @@ ADC $0436,X
 STA $01
 
 INC $042C,X              
-LDX $0F				;restore X
-RTS				;
+LDX $0F						;restore X
+RTS						;
 
 ;this is used to get appropriate OAM slot for the enemies (barrels and flames)
-CODE_EFD5:
-LDA $5D
 
+;CODE_EFD5:
+GetBarrelOAM_EFD5:
+LDA Barrel_CurrentIndex				;get OAM slot depending on current barrel index
+
+;GetSpringboardOAM_EFD7:
 CODE_EFD7:
-CLC                      
-ADC #$03                 
-JMP CODE_EFE2
+CLC						;input A - current springboard index
+ADC #$03					;
+JMP CODE_EFE2					;
 
-CODE_EFDD:
-LDA $AE                  
-CLC                      
-ADC #$01                 
+;CODE_EFDD:
+GetFlameEnemyOAM_EFDD:
+LDA FlameEnemy_CurrentIndex			;get OAM depending on the flame that is currently being processed
+CLC						;
+ADC #$01					;
 
 CODE_EFE2:
-ASL A                    
-ASL A                    
-ASL A                    
-ASL A                    
-TAX                      
-RTS
+ASL A						;
+ASL A						;
+ASL A						;
+ASL A						;
+TAX						;
+RTS						;
 
 ;must be collision-related
 CODE_EFE8:
@@ -9308,7 +9349,7 @@ INY						;
 LDA ScoreVRAMUpdData_C000,Y			;load end command for score update after all digit bytes
 STA $03						;
 DEX						;
-CLC
+CLC						;
 
 LOOP_F28E:  
 LDA $0020,Y					;store byte's low digit
@@ -9621,29 +9662,29 @@ BCS CODE_F3FB
 RTS                      
 
 CODE_F404:
-JSR CODE_F426
-SBC $01
-STA $01
-BCS CODE_F417                
-ADC #$0A                 
-STA $01
+JSR CODE_F426					;extract digits into separate adresses
+SBC $01						;do some calculation for carry
+STA $01						;
+BCS CODE_F417					;
+ADC #$0A					;
+STA $01						;
 
-LDA $02                  
-ADC #$0F                 
-STA $02
-  
+LDA $02						;
+ADC #$0F					;
+STA $02						;
+
 CODE_F417:
-LDA $03                  
-AND #$F0                 
-SEC                      
-SBC $02                  
-BCS CODE_F423
-ADC #$A0                 
-CLC
+LDA $03						;
+AND #$F0					;
+SEC						;
+SBC $02						;
+BCS CODE_F423					;
+ADC #$A0					;
+CLC						;
 
 CODE_F423:
-ORA $01                  
-RTS
+ORA $01						;
+RTS						;
 
 ;extract two digits into two bytes
 ;Input:
@@ -9654,60 +9695,65 @@ RTS
 ;$02 - high digit (00-F0) 
 
 CODE_F426:
-PHA
-AND #$0F
-STA $01
-PLA
-AND #$F0
-STA $02
+PHA						;
+AND #$0F					;
+STA $01						;save low digit
+PLA						;
+AND #$F0					;and high digit
+STA $02						;
 
-LDA $03
-AND #$0F
-RTS
+LDA $03						;calculate low digit of value we're about to calculate
+AND #$0F					;
+RTS						;
 
+;this code is used to calculate difference between player score(s) and TOP score to potentially replace it
+;Input $00 - low nibble is player score offset (bits 0-2 ONLY), high nibble - TOP score offset (#$10 is added to it, so if it's #$F0 it'll result in #$00)
+;low nibble bit 3 - run through 2 player scores (if not set, can be used for single player games)
+;in this game only input is #$F9 which means TOP score offset is 0, and player score offset is 1 (to take 2 players into accounts, since it uses DEXes for next player check) + bit 3 set for 2 players
 CODE_F435:
-LDA #$00                 
-STA $04                  
-CLC
+LDA #$00					;not quite sure what this is for yet
+STA $04						;
+CLC						;for next ADC
 
-LDA $00                  
-ADC #$10                 
-AND #$F0                 
-LSR A                    
-LSR A                    
-TAY
+LDA $00						;Y - TOP score offset (can support multiple TOP scores?)
+ADC #$10					;
+AND #$F0					;
+LSR A						;
+LSR A						;
+TAY						;
   
-LDA $00                  
-AND #$07                 
-ASL A
-ASL A
-TAX
+LDA $00						;X - players score offset
+AND #$07					;
+ASL A						;
+ASL A						;
+TAX						;
 
 CODE_F44A:
-LDA $0020,Y              
-BEQ CODE_F4A0
+LDA $0020,Y					;those unknown flags...
+BEQ CODE_F4A0					;
 
-LDA $24,X
-BEQ CODE_F479
+LDA $24,X					;those unknown flags 2: electric boogaloo
+BEQ CODE_F479					;
 
+;compare player's score vs. TOP score
 CODE_F453:
 SEC                      
-LDA $0023,Y              
+LDA ScoreDisplay_Top+2,Y              
 STA $03
 
-LDA $27,X                
+LDA ScoreDisplay_CurPlayer+2,X                
 JSR CODE_F404
 
-LDA $0022,Y              
+LDA ScoreDisplay_Top+1,Y              
 STA $03
 
-LDA $26,X                
+LDA ScoreDisplay_CurPlayer+1,X                
 JSR CODE_F404
 
-LDA $0021,Y              
+LDA ScoreDisplay_Top,Y              
 STA $03
 
-LDA $25,X                
+LDA ScoreDisplay_CurPlayer,X                
 JSR CODE_F404 
 BCS CODE_F4A4
 
@@ -9717,38 +9763,38 @@ BNE CODE_F4A9
 CODE_F479:
 LDA #$FF                 
 STA $04    
-SEC
+SEC						;carry set, means can overwrite TOP score
 
 CODE_F47E:   
-TYA                      
-BNE RETURN_F49F
-BCC CODE_F493
+TYA						;something to do if there were multiple TOP scores? i'm not sure...
+BNE RETURN_F49F					;
+BCC CODE_F493					;
 
-;store TOP score (if score is higher
-LDA $24,X
-STA $20
+;store TOP score (if score is higher)
+LDA $24,X					;still not sure what this is supposed to be
+STA $20						;
 
-LDA $25,X                
-STA $21
+LDA ScoreDisplay_CurPlayer,X			;
+STA ScoreDisplay_Top				;
 
-LDA $26,X                
-STA $22
+LDA ScoreDisplay_CurPlayer+1,X                
+STA ScoreDisplay_Top+1
 
-LDA $27,X                
-STA $23
+LDA ScoreDisplay_CurPlayer+2,X                
+STA ScoreDisplay_Top+2
   
 CODE_F493:
-LDA $00                  
-AND #$08                 
-BEQ RETURN_F49F                
-DEX                      
-DEX                      
-DEX                      
-DEX                      
-BPL CODE_F44A
+LDA $00						;check bit 3 (from input)
+AND #$08					;
+BEQ RETURN_F49F					;check for player 1 score?
+DEX						;
+DEX						;
+DEX						;
+DEX						;
+BPL CODE_F44A					;
   
 RETURN_F49F:
-RTS
+RTS						;
 
 CODE_F4A0:
 LDA $24,X                
@@ -9759,8 +9805,8 @@ LDA $0020,Y
 BNE CODE_F479
 
 CODE_F4A9:
-CLC    
-BCC CODE_F47E
+CLC						;can't overwrite TOP score
+BCC CODE_F47E					;
 
 ;Handle various timers
 ;HandleTimers_F4AC:
