@@ -5,7 +5,9 @@
 
 ;$00-$0C - common scratch ram for various purposes
 ;$0D-0E - Unused
-;$0F - is a scratch ram too, also used for music restoration from pause (Sound_MusicPauseBackup)
+;$0F - used for multiple purposes, listed below
+Sound_MusicPauseBackup = $0F			;used for pausing to disable music but keep it safe ($FC)
+;add more... maybe
 
 ControlMirror = $10				;mirror of ControlBits
 RenderMirror = $11				;mirror of RenderBits
@@ -29,12 +31,6 @@ ScoreDisplay_Player1 = $25			;|(25-27)
 ScoreDisplay_Player2 = $29			;/(29-2B)
 ScoreDisplay_CurPlayer = $25			;for current player, contains both player1 and player 2 (offset by X)
 ScoreDisplay_Bonus = $2E			;2 bytes, decimal, also acts as timer
-Score_UpdateFlag = $0505			;if set, update score display (may be used for something else judging by the fact that bit 4 can be set)
-Score_Top = $0507				;4 bytes, contains top score for game A and B, to be displayed when starting a level. doesn't take tens and ones into account.
-
-Players = $51					;$18 - 1 player, $1C - 2 players
-Players_CurrentPlayer = $52			;who's currently in play
-ReceivedLife_Flag = $0408			;2 bytes for each player, if true, don't give player extra lives anymore.
 
 Timer_Timing = $34				;used to decrease other timers, probably has other uses
 Timer_Global = $35				;16 bytes ($35-$45), specific timers listed below. $35-$3D decrease every frame, the rest decreases every 10 frames
@@ -50,103 +46,146 @@ Timer_Transition = $43				;common timer used for changing game states, like game
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts. (TO-DO: used for something else as well?)
 Timer_BonusScoreDecrease = $45			;timer that decreases bonus score by 100.
 
+;hitbox shenanigans
+HitboxA_XPos_Left = $46
+HitboxA_YPos_Top = $47
+HitboxA_XPos_Right = $48				;after adding width
+HitboxA_YPos_Bottom = $49			;after adding height
+
+HitboxB_XPos_Left = $4A
+HitboxB_YPos_Top = $4B
+HitboxB_XPos_Right = $4C				;after adding width
+HitboxB_YPos_Bottom = $4D			;after adding heigh
+
 TitleScreen_Flag = $4E				;if we're on title screen
-TitleScreen_MainCodeFlag = $0510		;init/main flag. 0 - init, 1 - main
-TitleScreen_SelectHeldFlag = $0512		;used to tell if select was pressed so it's not possible to switch options every frame (stays active if select is being held) (also counts up and down in gamecube version)
-TitleScreen_DemoCount = $0518			;how many times the demo must play for music to start playing again on the title screen
 
 GameControlFlag = $4F				;not sure...
 GameMode = $50					;bit 0 - Game A or B, bit 1 - 1 player or 2 players
 
-PhaseNo = $53
-PhaseNo_PerPlayer = $0400			;2 bytes, phase for each player
+Players = $51					;$18 - 1 player, $1C - 2 players
+Players_CurrentPlayer = $52			;who's currently in play
 
-LoopCount = $54					;number of times 100M was completed
-LoopCount_PerPlayer = $0402			;2 bytes, contains loop count for each player
+PhaseNo = $53
+
+LoopCount = $54
+Jumpman_Lives = $55
 
 ;hold directional inputs
 Direction = $56					;saves directional input
 Direction_Horz = $57				;only saves left and right directional inputs
 
-;related with platforms
-Platform_HeightIndex = $59			;how high player is by platform. 1st platform is the lowest and etc.
+Demo_Active = $58				;demo is active flag.
+Platform_HeightIndex = $59			;how high player is by platform. 1st platform is the lowest and etc. (rename to maybe "Jumpman_CurrentPlatformIndex" to match other entities)
 Jumpman_OnPlatformFlag = $5A			;set when jumpman's standing on the platform. reset when in air or climbing a ladder
-Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform jumpman's standing.
-
-;$64-$67 - unused
+Jumpman_ClimbOnPlatAnimCounter = $5B		;this is counted when climbing on top of the platform from ladder/climbing down the ladder from the platform
+Jumpman_ClimbAnimCounter = $5C			;counted when climbing a ladder. used to animate climbing 
 
 ;maybe not barrel-specific vvv
 Barrel_CurrentIndex = $5D
+Barrel_State = $5E
+;$64-$67 - unused
 Barrel_CurrentPlatformIndex = $68		;works the same way as Platform_HeightIndex but for barrels
 Barrel_GFXFrame = $72
-
 Barrel_ShiftDownFlag = $7D			;if set, move barrel's y-pos by 1 pixel for shifted platforms
-Barrel_AnimationTimer = $040D			;animate every certain amount of frames (see Barrel_AnimateFrames)
 
-;maybe rename to "Phase_CompleteFlag"? (below define)
-Kong_DefeatedFlag = $9A				;sometimes set and reset immideatly when completing phase but phase 3. stops normal gameplay functions just like GameControlFlag
-Kong_AnimationFlag = $0503			;if set, kong will play animations, but it's always set to 1, so he always play animations.
-Kong_TossToTheSideFlag = $0515			;this is used to show the "toss the barrel to the side" frame (doesn't affect the actual tossing)
+Jumpman_AlternateWalkAnimFlag = $85		;this is used to alternate walking frames. if 0, show Jumpman_GFXFrame_Walk1, if not 0, show Jumpman_GFXFrame_Walk2
+Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform jumpman's standing.
 
-;Player character addressses
-Jumpman_XPos = $46				;doesn't represent actual X-pos, it's used for various checks. it's a copy of jumpman's top-right OAM slot X-pos.
-Jumpman_YPos = $47				;same as above
-Jumpman_XPosRange = $48				;used for ladder detection. it's the same  value as in Jumpman_XPos, + 4
-Jumpman_Lives = $55
-Jumpman_ClimbOnPlatAnimCounter = $5B		;this is counted when climbing on top of the platform from ladder/climbing down the ladder from the platform
-Jumpman_ClimbAnimCounter = $5C			;counted when climbing a ladder. used to animate climbing 
 Jumpman_State = $96				;$01 - grounded, $02 - on ladder, $04 - Jumping, $08 - Falling, $0A - Has a hammer, $FF - Dead
 Jumpman_GFXFrame = $97				;contains top-left sprite tile value, remaining sprite tiles get +1 to this value each (used for walking)
 Jumpman_Death_FlipTimer = $98			;timer for flipping death animation. when set to FF, show actual death frame. Increases every time a full 360 loop is made
-Jumpman_HeldHammerIndex = $A0			;stores index of hammer that is currently being held (0 - not holding anything)
-Jumpman_CurrentLadderXPos = $A1			;X-position of the ladder the jumpman's currently climbing
-Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
 
+FlameEnemy_MoveDirection = $99			;1 byte, stores movement direction (also used for drawing for said movement instead of sprite table above) 0 - move right, 1 - move left.
+
+Phase_CompleteFlag = $9A			;sometimes set and reset immedeatly when completing phase but phase 3. stops normal gameplay functions just like GameControlFlag
 Jumpman_WalkFlag = $9B				;if set, move the player and animate (move every other frame)
 Jumpman_AirMoveFlag = $9E			;if set, move player horizontally when jumping (update every other frame)
 
-Hammer_CanGrabFlag = $0451			;2 bytes. If set, it can be interacted with and when grabbed, set to 0.
 Hammer_JumpmanFrame = $9F			;graphical frame index when jumpman's swinging the hammer
-Hammer_DestroyingEnemyFlag = $BF		;flag that deternimes whether we're destoying a hazard with a hammer. also acts as graphical index for destruction.
-
-;$0500 - Unused
+Jumpman_HeldHammerIndex = $A0			;stores index of hammer that is currently being held (0 - not holding anything)
+Jumpman_CurrentLadderXPos = $A1			;X-position of the ladder the jumpman's currently climbing
 
 Flame_State = $AD				;oil flame state. 0 - non-existant, 1 - init, 2 - animate, 3 - ???
 FlameEnemy_CurrentIndex = $AE			;
 FlameEnemy_State = $AF				;actual enemies
 FlameEnemy_Direction = $B3			;surprizingly underutilized, only used when standing in place (direction is also FlameEnemy_State)
-FlameEnemy_MoveDirection = $99			;1 byte, stores movement direction (also used for drawing for said movement instead of sprite table above) 0 - move right, 1 - move left.
 
 Pauline_AnimationCount = $B7			;used to change graphic frame, counts untill specified value after which stops animating for a bit
 
-EnemyDestruction_Animation = $BF		;if set to 1, start counting up untill specified value, after which the animation is stopped
+Hammer_DestroyingEnemy = $BF			;acts as a flag and animation counter for enemy destruction.
 
+Bolt_RemovedFlag = $C1				;6 bytes, a flag indicating that a bolt has been removed
+;C8 - unused?
+Item_RemovedFlag = $C9				;2 bytes, a flag indicating that an umbrella/a handbag has been removed
+EraseBuffer = $CC				;5 bytes, a temporary buffer used to store into actual buffer, used for handbag, bolt and umbrella removal
+
+;$D1 - unused
 FlameEnemy_DontFollowFlag = $D2			;25M and 100M only, if set don't follow the player (but it depends on difficulty)
+
+Sound_EffectPreserved = $F0			;saves Sound_Effect or Sound_Effect2 value to keep playing said sound
+Sound_FanfareNoiseTrackOffset = $F3
+Sound_MusicDataPointer = $F5			;2 bytes, for music
+Sound_SoundDataPointer = $F7			;2 bytes, indirect addressing (for fanfares, maaaaybe for other sounds idk)
+Sound_FanfareTriangleTrackOffset = $F9		;for fanfares that use triangle (00 - no triangle)
+Sound_FanfareSquareTrackOffset = $FA		;for fanfares that use square (00 - no square)
+Sound_CurrentFanfareID = $FB			;bit to value (e.g. bit 3 set = $03)
+Sound_Music = $FC				;simple beeps and boops to accompany you during gameplay (or not).
+Sound_Fanfare = $FD				;holds value for various jingles and sound effects, like title screen theme, score, pause and etc.
+Sound_Effect = $FE
+Sound_Effect2 = $FF
+Sound_FanfarePlayFlag = $0102			;this is used to continue playing music (may also affect other sound effects, or specifically sound channels)
+
+BufferOffset = $0330				;used to offset buffer position
+BufferAddr = $0331				;buffer for tile updates (62 bytes)
+
+PhaseNo_PerPlayer = $0400			;2 bytes, phase for each player				;number of times 100M was completed
+LoopCount_PerPlayer = $0402			;2 bytes, contains loop count for each player
+ReceivedLife_Flag = $0408			;2 bytes for each player, if true, don't give player extra lives anymore.
+Barrel_AnimationTimer = $040D			;animate every certain amount of frames (see Barrel_AnimateFrames)
+
+Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
 
 ;springboards from phase 3
 Springboard_CurrentIndex = $0445
 
-Demo_Active = $58				;demo is active flag.
+Kong_DefeatedFlag = $0450			;this flag indicates that the ending cutscene should play
+Hammer_CanGrabFlag = $0451			;2 bytes. If set, it can be interacted with and when grabbed, set to 0.
+
+;$0500 - Unused
+
+Kong_AnimationFlag = $0503			;if set, kong will play animations, but it's always set to 1, so he always play animations.
+Score_UpdateFlag = $0505			;if set, update score display (may be used for something else judging by the fact that bit 4 can be set)
+Score_Top = $0507				;4 bytes, contains top score for game A and B, to be displayed when starting a level. doesn't take tens and ones into account.
+
 Demo_InitFlag = $050B				;true - has been initialized, false - do init
 Demo_InputTimer = $050C				;how long input/command will last
 Demo_Input = $050D				;what input (button/command) is processed
 Demo_InputIndex = $050E				;index of current input
 
+TitleScreen_MainCodeFlag = $0510		;init/main flag. 0 - init, 1 - main
 Cursor_YPosition = $0511
+TitleScreen_SelectHeldFlag = $0512		;used to tell if select was pressed so it's not possible to switch options every frame (stays active if select is being held) (also counts up and down in gamecube version)
 
 Pause_HeldPressed = $0514			;this address reacts to pause being pressed/held but can also hold directional inputs (as long as pause is held). used to prevent pause switching every frame when pause is held.
+
+Kong_TossToTheSideFlag = $0515			;this is used to show the "toss the barrel to the side" frame (doesn't affect the actual tossing)
+
 Pause_Flag = $0516				;flag to indicate if game is paused
 Pause_Timer = $0517				;timer for pausing and unpausing
 
+TitleScreen_DemoCount = $0518			;how many times the demo must play for music to start playing again on the title screen
+
 ;Sound addressess
-Sound_MusicPauseBackup = $0F			;used for pausing to disable music but keep it safe ($FC)
 Sound_MusicHammerBackup = $0519			;used to save music value that played before picking up a hammer
-Sound_MusicDataPointer = $F7			;2 bytes, indirect addressing
-Sound_Music = $FC
-Sound_Fanfare = $FD				;holds value for various jingles and sound effects, like title screen theme, score, pause and etc.
-Sound_Effect = $FE
-Sound_Effect2 = $FF
-Sound_FanfarePlayFlag = $0102			;this is used to continue playing music (may also affect other sound effects, or specifically sound channels)
+
+Sound_TriangleTrackOffset = $0680		;or a triangle phase/state/beat, w/e you wanna call that (this is for music btw.)
+Sound_NoteLengthOffset = $068D
+Sound_SquareTimerSaved = $0691			;this address is used to store to Sound_SquareTimer, this can change for the next beat or stay the same for the same timing
+Sound_NoiseTimer = $0695
+Sound_SquareTimer = $0696
+;$0697 is unused
+Sound_TriangleTimer = $0698			;time between each triangle beat
+Sound_MusicMirror = $06A3			;a copy of Sound_Music used to tell if we're playing the same song and if we should initialize music-related stuff (like triangle channel)
 
 ;OAM base ram addresses
 OAM_Y = $0200
@@ -194,11 +233,11 @@ PlatformSprite_OAM_Tile = OAM_Tile+(4*PlatformSprite_OAM_Slot)
 PlatformSprite_OAM_Prop = OAM_Prop+(4*PlatformSprite_OAM_Slot)
 PlatformSprite_OAM_X = OAM_X+(4*PlatformSprite_OAM_Slot)
 
-BufferOffset = $0330				;used to offset buffer position
-BufferAddr = $0331				;buffer for tile updates (62 bytes)
+DonkeyKong_OAM_Y = OAM_Y+(4*DonkeyKong_OAM_Slot)
+DonkeyKong_OAM_X = OAM_X+(4*DonkeyKong_OAM_Slot)
 
 ;RAM addresses that are "used" but do nothing.
-Sound_ChannelsMirrorUnused = $0100		;this adress isn't actually used for anything, other than being a mirror of APU_SoundChannels (being stored in but not read)
+Sound_ChannelsMirrorUnused = $0100		;this address isn't actually used for anything, other than being a mirror of APU_SoundChannels (being stored in but not read)
 Unused_0513 = $0513				;similar address is used in Donkey Kong Jr. NES port.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -228,7 +267,7 @@ VRAMWriteCommand_DrawVert = $80			;bit 7 - change drawing from horizontal line t
 VRAMWriteCommand_Stop = $00     		;command to stop VRAM write and return from routine.
 
 ;Various background tile defines
-Tile_Empty = $24				;standart empty tile (transperant).
+Tile_Empty = $24				;standart empty tile (transparent).
 Tile_Roman_I = $66				;\a pair or roman numbers used as player number
 Tile_Roman_II = $67				;/for "PLAYER X" screen and status bar
 
@@ -259,13 +298,8 @@ Jumpman_State_Hammer = $0A
 Jumpman_State_Dead = $FF
 
 ;Barrel state values
-Barrel_Initialized = $80
-
-Barrel_AnimateFrames = $06			;if equal or more, change GFX frame
-
-Barrel_GFXFrame_UpLeft = $80
-Barrel_GFXFrame_BottomLeft = $8C
-Barrel_GFXFrame_Vertical1 = $90
+Barrel_State_GoDown = $02			;maybe?
+Barrel_State_Initialized = $80
 
 ;Phase values. Technically speaking title screen is $00 but it's not checked, so...
 Phase_25M = $01
@@ -296,7 +330,7 @@ Sound_Fanfare_GamePause = $40
 Sound_Fanfare_TitleScreenTheme = $80
 
 ;$FE
-Sound_Effect_SpringFall = $01			;\only can play in phase 2 (75M) (or during pause via hacking)
+Sound_Effect_Fall = $01				;\for springboards in phase 2 and for falling DK for the ending cutscene
 Sound_Effect_SpringBounce = $02			;/
 ;Bits 2-6 are unused
 Sound_Effect_Hit = $80				;donkey kong chest hit sound and plays when dying (and when the barrel hits oil)
@@ -305,14 +339,14 @@ Sound_Effect_Hit = $80				;donkey kong chest hit sound and plays when dying (and
 Sound_Effect2_Dead = $01
 Sound_Effect2_EnemyDestruct = $02
 Sound_Effect2_Jump = $04
-Sound_Effect2_Movement = $08
+Sound_Effect2_Movement = $08			;when the player moves
 ;other bits are unused
 
 ;Various OAM-related defines. OAM slots are in decimal (from 0 to 63).
 Cursor_OAM_Slot = 0				;for title screen
 Cursor_Tile = $A2
 Cursor_XPos = $38
-Cursor_Prop = $00
+Cursor_Prop = OAMProp_Palette0
 
 Jumpman_OAM_Slot = 0
 
@@ -333,7 +367,8 @@ Jumpman_GFXFrame_Walk1_HammerDown = $20
 Jumpman_GFXFrame_Climbing = $24
 Jumpman_GFXFrame_ClimbPlat_Frame1 = $60
 Jumpman_GFXFrame_ClimbPlat_Frame2 = $64
-Jumpman_GFXFrame_ClimbPlat_IsOn = $68		;last framw when on top of the platform
+Jumpman_GFXFrame_ClimbPlat_IsOn = $68		;last frame when on top of the platform
+Jumpman_GFXFrame_ClimbingFlipped = $54		;this isn't actually a graphic frame, but rather a specific value ("command") that tells the game to draw Jumpman_GFXFrame_Climbing flipped horizontally.
 
 Jumpman_GFXFrame_Dead_Up = $6C
 Jumpman_GFXFrame_Dead_Dead = $7C		;you want someone dead? Really dead?
@@ -349,6 +384,11 @@ Hammer_OAM_Slot = 52				;one hammer takes 2 slots
 Hammer_GFXFrame_HammerUp = $F6			;2 tiles, F6 and F7
 Hammer_GFXFrame_HammerDown = $FA		;FA and FB, you get the idea
 
+EnemyDestruction_Frame1 = $30
+EnemyDestruction_Frame2 = $34
+EnemyDestruction_Frame3 = $38
+EnemyDestruction_Frame4 = $3C
+
 PaulineHead_OAM_Slot = 58			;2 tiles
 PaulineBody_OAM_Slot = 60			;4 tiles
 PaulineHead_Tile = $D5
@@ -356,6 +396,15 @@ PaulineBody_GFXFrame_Frame1 = $D7		;\for body animation
 PaulineBody_GFXFrame_Frame2 = $DB		;/
 
 Barrel_OAM_Slot = 12
+
+Barrel_AnimateFrames = $06			;if equal or more, change GFX frame
+
+Barrel_GFXFrame_UpLeft = $80
+Barrel_GFXFrame_BottomLeft = $8C
+Barrel_GFXFrame_Vertical1 = $90
+Barrel_GFXFrame_Vertical2 = $94
+
+Barrel_OAMProp = OAMProp_Palette3		;default property
 
 PlatformSprite_OAM_Slot = 12
 PlatformSprite_Tile = $A0
@@ -404,7 +453,22 @@ Ending_Jumpman_YPos = $30
 Ending_Heart_YPos = $20
 Ending_Heart_XPos = $78
 
+;Donkey kong variables
+DonkeyKong_OAM_Slot = 20
+DonkeyKong_OAM_FirstTile = $40			;initial tile, from which 24 subsequent tiles are used
+DonkeyKong_OAM_XPos = $68			;\initial positions for when it falls down
+DonkeyKong_OAM_YPos = $3E			;/
+
 ;version defines, don't touch
 JP = 0
 US = 1
 Gamecube = 2
+
+;easy OAM props, don't change these
+OAMProp_YFlip = %10000000
+OAMProp_XFlip = %01000000
+OAMProp_BGPriority = %00100000
+OAMProp_Palette0 = %00000000
+OAMProp_Palette1 = %00000001
+OAMProp_Palette2 = %00000010
+OAMProp_Palette3 = %00000011

@@ -19,4 +19,4 @@ Also, I refer to player character who would become the world's most famous plumb
 Terminology:
 Sprite Tiles - OAM tiles
 Sprite - an object, usually uses sprite tiles (donkey kong himself isn't a sprite for example, since he uses background tiles (exception: ending cutscene where he turns into a sprite when falling down))
- 
+Square (sound) - Pulse wave (some documentations call it square, some pulse wave, but I already used former)
