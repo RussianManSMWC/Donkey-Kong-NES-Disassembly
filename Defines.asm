@@ -23,7 +23,7 @@ ControllerInput_Player1Previous = $15		;holds initial input that won't change if
 ControllerInput_Player2 = $16			;\same for player 2
 ControllerInput_Player2Previous = $17		;/
 
-RNG_Value = $18					;8 bytes (18-1F)
+RNG_Value = $18					;8 bytes (18-1F). Some of these aren't used.
 
 ;$20, $24 and $28 are checked but seem to be unused. currently unknown what their purpose is (they're for respective score counters)
 ScoreDisplay_Top = $21				;\3 bytes, decimal (21-23).
@@ -32,16 +32,23 @@ ScoreDisplay_Player2 = $29			;/(29-2B)
 ScoreDisplay_CurPlayer = $25			;for current player, contains both player1 and player 2 (offset by X)
 ScoreDisplay_Bonus = $2E			;2 bytes, decimal, also acts as timer
 
+;$30-$33 - unused
+
 Timer_Timing = $34				;used to decrease other timers, probably has other uses
-Timer_Global = $35				;16 bytes ($35-$45), specific timers listed below. $35-$3D decrease every frame, the rest decreases every 10 frames
 ;Timer_KongAnimation = $34			;
-Timer_KongSpawn = $36				;timer for donkey kong to spawn an entity (barrel or springboard)
+Timer_Global = $35				;16 bytes ($35-$45), specific timers listed below. $35-$3D decrease every frame, the rest decreases every 10 frames
+Timer_EntitySpawn = $36				;timer for donkey kong to spawn an entity (barrel or springboard)
+Timer_BarrelHold = $37
 Timer_FlameAnimation = $38			;used for oil flame in phase 1
-Timer_PaulineAnimation = $39			;used for pauline animation, when zero start animation
+Timer_PaulineAnimation = $39			;used for pauline animation, when zero, start animation
+Timer_PhaseEndTimer = $3A			;either win or lose
+
+;$3C-$3E - unused
 
 Timer_Hammer = $3F				;timer for hammer power
 Timer_FlameEnemySpawn = $40
 Timer_Score = $41				;2 bytes, show score sprites for a little bit
+;$42 - unused
 Timer_Transition = $43				;common timer used for changing game states, like game over, phase init, etc. (sorta timer though it's strangely handled)
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts. (TO-DO: used for something else as well?)
 Timer_BonusScoreDecrease = $45			;timer that decreases bonus score by 100.
@@ -54,12 +61,12 @@ HitboxA_YPos_Bottom = $49			;after adding height
 
 HitboxB_XPos_Left = $4A
 HitboxB_YPos_Top = $4B
-HitboxB_XPos_Right = $4C				;after adding width
+HitboxB_XPos_Right = $4C			;after adding width
 HitboxB_YPos_Bottom = $4D			;after adding heigh
 
-TitleScreen_Flag = $4E				;if we're on title screen
+TitleScreen_Flag = $4E				;if we're on title screen (also counts as game over flag)
 
-GameControlFlag = $4F				;not sure...
+GameControlFlag = $4F				;if set to 0, freeze gameplay
 GameMode = $50					;bit 0 - Game A or B, bit 1 - 1 player or 2 players
 
 Players = $51					;$18 - 1 player, $1C - 2 players
@@ -80,6 +87,8 @@ Jumpman_OnPlatformFlag = $5A			;set when jumpman's standing on the platform. res
 Jumpman_ClimbOnPlatAnimCounter = $5B		;this is counted when climbing on top of the platform from ladder/climbing down the ladder from the platform
 Jumpman_ClimbAnimCounter = $5C			;counted when climbing a ladder. used to animate climbing 
 
+Entity_TimingIndex = $5D
+
 ;maybe not barrel-specific vvv
 Barrel_CurrentIndex = $5D
 Barrel_State = $5E
@@ -91,6 +100,11 @@ Barrel_ShiftDownFlag = $7D			;if set, move barrel's y-pos by 1 pixel for shifted
 Jumpman_AlternateWalkAnimFlag = $85		;this is used to alternate walking frames. if 0, show Jumpman_GFXFrame_Walk1, if not 0, show Jumpman_GFXFrame_Walk2
 Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform jumpman's standing.
 
+Entity_TimingCounter = $8A			;count which bit to check for the timing (CODE_DFE8)
+
+Jumpman_JumpedFlag = $94			;set to 1 when player has jumped to play a sound effect and stuff once
+Jumpman_LandingFrameCounter = $94		;yes, the above also acts as this. when the player lands, this frame ticks to specific point to display landing frame, after which jumpman's fate is decided
+Jumpman_JumpYPos = $95				;this is y-position stored for when the player jumps, if the player ends up much lower than this position, they die upon landing. this is set to FF when they player is set to die that way
 Jumpman_State = $96				;$01 - grounded, $02 - on ladder, $04 - Jumping, $08 - Falling, $0A - Has a hammer, $FF - Dead
 Jumpman_GFXFrame = $97				;contains top-left sprite tile value, remaining sprite tiles get +1 to this value each (used for walking)
 Jumpman_Death_FlipTimer = $98			;timer for flipping death animation. when set to FF, show actual death frame. Increases every time a full 360 loop is made
@@ -122,6 +136,12 @@ EraseBuffer = $CC				;5 bytes, a temporary buffer used to store into actual buff
 ;$D1 - unused
 FlameEnemy_DontFollowFlag = $D2			;25M and 100M only, if set don't follow the player (but it depends on difficulty)
 
+MovingPlatform_CurrentIndex = $D2
+
+MovingPlatform_Upward_RespawnFlag = $D8
+MovingPlatform_Downward_RespawnFlag = $D9
+Jumpman_StandingOnMovingPlatformValue = $DA	;0 - not standing on a moving platform, 1 - standing on a platform that moves up, 2 - standing on a platform that moves down
+
 Sound_EffectPreserved = $F0			;saves Sound_Effect or Sound_Effect2 value to keep playing said sound
 Sound_FanfareNoiseTrackOffset = $F3
 Sound_MusicDataPointer = $F5			;2 bytes, for music
@@ -138,15 +158,23 @@ Sound_FanfarePlayFlag = $0102			;this is used to continue playing music (may als
 BufferOffset = $0330				;used to offset buffer position
 BufferAddr = $0331				;buffer for tile updates (62 bytes)
 
-PhaseNo_PerPlayer = $0400			;2 bytes, phase for each player				;number of times 100M was completed
+PhaseNo_PerPlayer = $0400			;2 bytes, phase for each player
 LoopCount_PerPlayer = $0402			;2 bytes, contains loop count for each player
+Jumpman_Lives_PerPlayer = $0404			;again 2 bytes, lives for each player
+GameOverFlag_PerPlayer = $0406			;it's TitleScreen_Flag per player but used as a game over (which that flag technically is)
 ReceivedLife_Flag = $0408			;2 bytes for each player, if true, don't give player extra lives anymore.
+
+LostALifeFlag = $040B
+
 Barrel_AnimationTimer = $040D			;animate every certain amount of frames (see Barrel_AnimateFrames)
 
 Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
 
 ;springboards from phase 3
 Springboard_CurrentIndex = $0445
+Springboard_SpawnedXPos = $0446			;stored to when spanwned, used to check if got far enough from the spawn point to start falling down
+
+RemovedBoltCount = $044F
 
 Kong_DefeatedFlag = $0450			;this flag indicates that the ending cutscene should play
 Hammer_CanGrabFlag = $0451			;2 bytes. If set, it can be interacted with and when grabbed, set to 0.
@@ -297,6 +325,8 @@ Jumpman_State_Falling = $08
 Jumpman_State_Hammer = $0A
 Jumpman_State_Dead = $FF
 
+Jumpman_InitLives = $03				;the amount of lives given upon starting a new game
+
 ;Barrel state values
 Barrel_State_GoDown = $02			;maybe?
 Barrel_State_Initialized = $80
@@ -391,9 +421,14 @@ EnemyDestruction_Frame4 = $3C
 
 PaulineHead_OAM_Slot = 58			;2 tiles
 PaulineBody_OAM_Slot = 60			;4 tiles
+
 PaulineHead_Tile = $D5
+
 PaulineBody_GFXFrame_Frame1 = $D7		;\for body animation
 PaulineBody_GFXFrame_Frame2 = $DB		;/
+
+PaulineBody_XPos = $50				;her body's position. it's the same for all phases (used for animation update)
+PaulineBody_YPos = $20
 
 Barrel_OAM_Slot = 12
 
@@ -406,8 +441,35 @@ Barrel_GFXFrame_Vertical2 = $94
 
 Barrel_OAMProp = OAMProp_Palette3		;default property
 
-PlatformSprite_OAM_Slot = 12
+PlatformSprite_OAM_Slot = 12			;6 pairs for 6 platforms
 PlatformSprite_Tile = $A0
+PlatformSprite_Prop = OAMProp_Palette3
+
+;when the downward moving lift gets to this position, the BG priority bit gets reset
+PlatformSprite_Downward_NoBGPriorityPoint = $50
+
+;when at this point, the bit is set
+PlatformSprite_Downward_YesBGPriorityPoint = $C8
+
+;at this point it'll be removed
+PlatformSprite_Downward_RemovePoint = $D0
+
+;respawn a previously despawned moving platform when one of them reaches this position
+PlatformSprite_Downward_RespawnPoint = $A8
+
+;don't confuse with the above define. that one enables a flag to spawn a platform back, and this is the position at which it spawns
+PlatformSprite_Downward_SpawnPoint = $48
+
+;same variables for upward lift
+PlatformSprite_Upward_NoBGPriorityPoint = $C8
+
+PlatformSprite_Upward_YesBGPriorityPoint = $50
+
+PlatformSprite_Upward_RemovePoint = $48
+
+PlatformSprite_Upward_RespawnPoint = $70
+
+PlatformSprite_Upward_SpawnPoint = $D0
 
 ;not to be confused with flame enemy! this is oil barrel flame from phase 1
 Flame_OAM_Slot = 56				;2 tiles
@@ -428,6 +490,7 @@ FlameEnemy_GFXFrame_Frame2 = $9C
 FlameEnemy100M_GFXFrame_Frame1 = $A8
 FlameEnemy100M_GFXFrame_Frame2 = $AC
 
+FlameEnemy_State_AnimateInPlace = $00
 FlameEnemy_State_MoveRight = $01
 FlameEnemy_State_MoveLeft = $02
 FlameEnemy_State_SpawnINIT = $06			;oil barrel (25M) or just appear (100M)
@@ -453,7 +516,7 @@ Ending_Jumpman_YPos = $30
 Ending_Heart_YPos = $20
 Ending_Heart_XPos = $78
 
-;Donkey kong variables
+;Donkey kong variables (when he turns into a sprite for the final cutscene)
 DonkeyKong_OAM_Slot = 20
 DonkeyKong_OAM_FirstTile = $40			;initial tile, from which 24 subsequent tiles are used
 DonkeyKong_OAM_XPos = $68			;\initial positions for when it falls down
@@ -467,7 +530,7 @@ Gamecube = 2
 ;easy OAM props, don't change these
 OAMProp_YFlip = %10000000
 OAMProp_XFlip = %01000000
-OAMProp_BGPriority = %00100000
+OAMProp_BGPriority = %00100000				;if set, go behind background
 OAMProp_Palette0 = %00000000
 OAMProp_Palette1 = %00000001
 OAMProp_Palette2 = %00000010
