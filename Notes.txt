@@ -1,12 +1,13 @@
 Labels follow this format:
 
 VERSION_TAG/NAME_ADDRESS
+(example: JP_LOOP_C000)
 
 Tags:
 CODE - marks a block of code
 DATA - marks a block of data
 UNUSED - marks an unused code or data
-LOOP - marks a set of repeating instructions
+LOOP - marks a set of instructions that are executed multiple times (in a loop)
 RETURN - marks a return from routine
 
 there are also version-specific labels. Default labels refer to Revision 1/US version (yeah, their adresses aren't the same for others. can't really do much, add PC address for each line for each version? would've been cool with automated tool)

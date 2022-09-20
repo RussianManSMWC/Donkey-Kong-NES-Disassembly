@@ -4,6 +4,11 @@
 ;(to-do: split into addresses and constants?)
 
 ;$00-$0C - common scratch ram for various purposes
+;Most common uses of the scratch RAM. other specific uses are local
+TEMP_XPosition = $00
+TEMP_YPosition = $01
+TEMP_EntitySlot = $04
+
 ;$0D-0E - Unused
 ;$0F - used for multiple purposes, listed below
 Sound_MusicPauseBackup = $0F			;used for pausing to disable music but keep it safe ($FC)
@@ -11,8 +16,8 @@ Sound_MusicPauseBackup = $0F			;used for pausing to disable music but keep it sa
 
 ControlMirror = $10				;mirror of ControlBits
 RenderMirror = $11				;mirror of RenderBits
-CameraPositionY = $12				;Y-position value of CameraPositionReg (first write)
-CameraPositionX = $13				;X-position value of CameraPositionReg (second write)
+CameraPositionX = $12				;X-position value of CameraPositionReg (first write)
+CameraPositionY = $13				;Y-position value of CameraPositionReg (second write)
 
 ControllerInput = $14				;base adress for both controllers (indexed)
 ControllerInput_Previous = $15			;same as above but for presses
@@ -29,7 +34,7 @@ RNG_Value = $18					;8 bytes (18-1F). Some of these aren't used.
 ScoreDisplay_Top = $21				;\3 bytes, decimal (21-23).
 ScoreDisplay_Player1 = $25			;|(25-27)
 ScoreDisplay_Player2 = $29			;/(29-2B)
-ScoreDisplay_CurPlayer = $25			;for current player, contains both player1 and player 2 (offset by X)
+ScoreDisplay_CurPlayer = $25			;for current player, contains both player 1 and player 2 (offset by X)
 ScoreDisplay_Bonus = $2E			;2 bytes, decimal, also acts as timer
 
 ;$30-$33 - unused
@@ -50,19 +55,20 @@ Timer_FlameEnemySpawn = $40
 Timer_Score = $41				;2 bytes, show score sprites for a little bit
 ;$42 - unused
 Timer_Transition = $43				;common timer used for changing game states, like game over, phase init, etc. (sorta timer though it's strangely handled)
+Timer_ForVertBarrelToss = $43			;another use for this timer is in 25M, when it runs out, the kong can throw a vertical barrela again
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts. (TO-DO: used for something else as well?)
 Timer_BonusScoreDecrease = $45			;timer that decreases bonus score by 100.
 
 ;hitbox shenanigans
 HitboxA_XPos_Left = $46
 HitboxA_YPos_Top = $47
-HitboxA_XPos_Right = $48				;after adding width
+HitboxA_XPos_Right = $48			;after adding width
 HitboxA_YPos_Bottom = $49			;after adding height
 
 HitboxB_XPos_Left = $4A
 HitboxB_YPos_Top = $4B
 HitboxB_XPos_Right = $4C			;after adding width
-HitboxB_YPos_Bottom = $4D			;after adding heigh
+HitboxB_YPos_Bottom = $4D			;after adding height
 
 TitleScreen_Flag = $4E				;if we're on title screen (also counts as game over flag)
 
@@ -82,24 +88,27 @@ Direction = $56					;saves directional input
 Direction_Horz = $57				;only saves left and right directional inputs
 
 Demo_Active = $58				;demo is active flag.
-Platform_HeightIndex = $59			;how high player is by platform. 1st platform is the lowest and etc. (rename to maybe "Jumpman_CurrentPlatformIndex" to match other entities)
+Jumpman_CurrentPlatformIndex = $59		;how high player is by platform. 1st platform is the lowest and etc.
 Jumpman_OnPlatformFlag = $5A			;set when jumpman's standing on the platform. reset when in air or climbing a ladder
 Jumpman_ClimbOnPlatAnimCounter = $5B		;this is counted when climbing on top of the platform from ladder/climbing down the ladder from the platform
 Jumpman_ClimbAnimCounter = $5C			;counted when climbing a ladder. used to animate climbing 
 
 Entity_TimingIndex = $5D
 
-;maybe not barrel-specific vvv
+;maybe not barrel-specific vvv (for springboard as well?)
 Barrel_CurrentIndex = $5D
 Barrel_State = $5E
 ;$64-$67 - unused
 Barrel_CurrentPlatformIndex = $68		;works the same way as Platform_HeightIndex but for barrels
 Barrel_GFXFrame = $72
 Barrel_ShiftDownFlag = $7D			;if set, move barrel's y-pos by 1 pixel for shifted platforms
+;$7E - barrel related
 
 Jumpman_AlternateWalkAnimFlag = $85		;this is used to alternate walking frames. if 0, show Jumpman_GFXFrame_Walk1, if not 0, show Jumpman_GFXFrame_Walk2
-Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform jumpman's standing.
-
+Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform jumpman's standing (otherwise used as scratch ram in a few routines).
+;$87 - unused
+;$88 - timing related (similar to Entity_TimingCounter)
+;$89 - unused
 Entity_TimingCounter = $8A			;count which bit to check for the timing (CODE_DFE8)
 
 Jumpman_JumpedFlag = $94			;set to 1 when player has jumped to play a sound effect and stuff once
@@ -113,11 +122,19 @@ FlameEnemy_MoveDirection = $99			;1 byte, stores movement direction (also used f
 
 Phase_CompleteFlag = $9A			;sometimes set and reset immedeatly when completing phase but phase 3. stops normal gameplay functions just like GameControlFlag
 Jumpman_WalkFlag = $9B				;if set, move the player and animate (move every other frame)
+
+Hitboxes_XDistance = $9C			;calculated horizontal distance between two hitboxes
+Hitboxes_YDistance = $9D			;calculated vertical distance between two hitboxes, notably used for jumpman jumping over a barrel and awarding points
+
 Jumpman_AirMoveFlag = $9E			;if set, move player horizontally when jumping (update every other frame)
 
 Hammer_JumpmanFrame = $9F			;graphical frame index when jumpman's swinging the hammer
 Jumpman_HeldHammerIndex = $A0			;stores index of hammer that is currently being held (0 - not holding anything)
 Jumpman_CurrentLadderXPos = $A1			;X-position of the ladder the jumpman's currently climbing
+;$A2 - hammer animation related
+
+Barrel_LadderBottomYPos = $A3			;when goes down the ladder checks for this value to see where the ladder aends and it should start moving like normal again
+;$A3 - barrel related
 
 Flame_State = $AD				;oil flame state. 0 - non-existant, 1 - init, 2 - animate, 3 - ???
 FlameEnemy_CurrentIndex = $AE			;
@@ -126,8 +143,11 @@ FlameEnemy_Direction = $B3			;surprizingly underutilized, only used when standin
 
 Pauline_AnimationCount = $B7			;used to change graphic frame, counts untill specified value after which stops animating for a bit
 
+FlameEnemy_LadderBoundary = $B9			;each flame enemy reserves a pair of bytes - first one stores the Y-position of the upper ladder boundary (where the flame stops climbing, either for broken or not broken ladder), and the second is the ladder's bottom boundary
+
 Hammer_DestroyingEnemy = $BF			;acts as a flag and animation counter for enemy destruction.
 
+;$C0 - barrel related?
 Bolt_RemovedFlag = $C1				;6 bytes, a flag indicating that a bolt has been removed
 ;C8 - unused?
 Item_RemovedFlag = $C9				;2 bytes, a flag indicating that an umbrella/a handbag has been removed
@@ -138,9 +158,16 @@ FlameEnemy_DontFollowFlag = $D2			;25M and 100M only, if set don't follow the pl
 
 MovingPlatform_CurrentIndex = $D2
 
+;$D3-$D5 - fire enemy related?
+
+;$D6-$D7 - unused
 MovingPlatform_Upward_RespawnFlag = $D8
 MovingPlatform_Downward_RespawnFlag = $D9
 Jumpman_StandingOnMovingPlatformValue = $DA	;0 - not standing on a moving platform, 1 - standing on a platform that moves up, 2 - standing on a platform that moves down
+
+FlameEnemy_Platform_HeightIndex = $E0		;same as Platform_HeightIndex but for flame enemies
+
+;$E8 - fire enemy-related
 
 Sound_EffectPreserved = $F0			;saves Sound_Effect or Sound_Effect2 value to keep playing said sound
 Sound_FanfareNoiseTrackOffset = $F3
@@ -162,9 +189,9 @@ PhaseNo_PerPlayer = $0400			;2 bytes, phase for each player
 LoopCount_PerPlayer = $0402			;2 bytes, contains loop count for each player
 Jumpman_Lives_PerPlayer = $0404			;again 2 bytes, lives for each player
 GameOverFlag_PerPlayer = $0406			;it's TitleScreen_Flag per player but used as a game over (which that flag technically is)
-ReceivedLife_Flag = $0408			;2 bytes for each player, if true, don't give player extra lives anymore.
+ReceivedLife_Flag = $0408			;2 bytes, one for each player. if true, don't give player extra lives anymore.
 
-LostALifeFlag = $040B
+LostALifeFlag = $040B				;should be pretty self explanatory, set when lost a life to decrease a life counter
 
 Barrel_AnimationTimer = $040D			;animate every certain amount of frames (see Barrel_AnimateFrames)
 
@@ -179,16 +206,20 @@ RemovedBoltCount = $044F
 Kong_DefeatedFlag = $0450			;this flag indicates that the ending cutscene should play
 Hammer_CanGrabFlag = $0451			;2 bytes. If set, it can be interacted with and when grabbed, set to 0.
 
-;$0500 - Unused
+;$0500-$0502 - Unused
 
 Kong_AnimationFlag = $0503			;if set, kong will play animations, but it's always set to 1, so he always play animations.
-Score_UpdateFlag = $0505			;if set, update score display (may be used for something else judging by the fact that bit 4 can be set)
+;$0504 - unused
+Score_UpdateFlag = $0505			;if set, update score display (however if bit 4 is set the score won't be updated, set when the kong is animating)
+;$0506 - unused
 Score_Top = $0507				;4 bytes, contains top score for game A and B, to be displayed when starting a level. doesn't take tens and ones into account.
 
 Demo_InitFlag = $050B				;true - has been initialized, false - do init
 Demo_InputTimer = $050C				;how long input/command will last
 Demo_Input = $050D				;what input (button/command) is processed
 Demo_InputIndex = $050E				;index of current input
+
+;$050F - unused
 
 TitleScreen_MainCodeFlag = $0510		;init/main flag. 0 - init, 1 - main
 Cursor_YPosition = $0511
@@ -205,6 +236,8 @@ TitleScreen_DemoCount = $0518			;how many times the demo must play for music to 
 
 ;Sound addressess
 Sound_MusicHammerBackup = $0519			;used to save music value that played before picking up a hammer
+
+;$051A - $0580 - unused
 
 Sound_TriangleTrackOffset = $0680		;or a triangle phase/state/beat, w/e you wanna call that (this is for music btw.)
 Sound_NoteLengthOffset = $068D
@@ -325,11 +358,7 @@ Jumpman_State_Falling = $08
 Jumpman_State_Hammer = $0A
 Jumpman_State_Dead = $FF
 
-Jumpman_InitLives = $03				;the amount of lives given upon starting a new game
-
-;Barrel state values
-Barrel_State_GoDown = $02			;maybe?
-Barrel_State_Initialized = $80
+Jumpman_InitLives = 3				;the amount of lives given upon starting a new game
 
 ;Phase values. Technically speaking title screen is $00 but it's not checked, so...
 Phase_25M = $01
@@ -434,10 +463,24 @@ Barrel_OAM_Slot = 12
 
 Barrel_AnimateFrames = $06			;if equal or more, change GFX frame
 
+;for when the kong tosses the barrel to the side it spawns at these coordinates
+Barrel_HorzTossXPos = $4D
+Barrel_HorzTossYPos = $32
+
+;when I say UpLeft I mean the little dot's position
 Barrel_GFXFrame_UpLeft = $80
+Barrel_GFXFrame_UpRight = $84
 Barrel_GFXFrame_BottomLeft = $8C
 Barrel_GFXFrame_Vertical1 = $90
 Barrel_GFXFrame_Vertical2 = $94
+
+;Barrel state values
+Barrel_State_HorzMovement = $01
+Barrel_State_GoDown = $02			;maybe?
+Barrel_State_DropOffPlatform = $08
+Barrel_State_Init = $80				;general init, it'll then become either vertically tossed or horizontally
+Barrel_State_HorzTossInit = $81
+Barrel_State_VertTossInit = $C0			;maybe???
 
 Barrel_OAMProp = OAMProp_Palette3		;default property
 
@@ -493,7 +536,8 @@ FlameEnemy100M_GFXFrame_Frame2 = $AC
 FlameEnemy_State_AnimateInPlace = $00
 FlameEnemy_State_MoveRight = $01
 FlameEnemy_State_MoveLeft = $02
-FlameEnemy_State_SpawnINIT = $06			;oil barrel (25M) or just appear (100M)
+FlameEnemy_State_Climbing = $03
+FlameEnemy_State_SpawnINIT = $06		;oil barrel (25M) or just appear (100M)
 FlameEnemy_State_SpawnFromOil = $08
 FlameEnemy_State_GFXShiftUp = $10
 FlameEnemy_State_NoGFXShift = $20
