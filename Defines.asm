@@ -30,12 +30,12 @@ ControllerInput_Player2Previous = $17		;/
 
 RNG_Value = $18					;8 bytes (18-1F). Some of these aren't used.
 
-;$20, $24 and $28 are checked but seem to be unused. currently unknown what their purpose is (they're for respective score counters)
+Score_InvertOperandFlag = $24			;alternates every 4 bytes for each counter, when there's an overflow/underflow, the operation (addition or substraction) will be reverted to prevent that (not entirely sure how it works though)
 ScoreDisplay_Top = $21				;\3 bytes, decimal (21-23).
 ScoreDisplay_Player1 = $25			;|(25-27)
 ScoreDisplay_Player2 = $29			;/(29-2B)
-ScoreDisplay_CurPlayer = $25			;for current player, contains both player 1 and player 2 (offset by X)
 ScoreDisplay_Bonus = $2E			;2 bytes, decimal, also acts as timer
+ScoreDisplay_Counter = ScoreDisplay_Player1	;general score address used with an offset, can be both either player one or two score or a bonus score
 
 ;$30-$33 - unused
 
@@ -47,6 +47,7 @@ Timer_BarrelHold = $37
 Timer_FlameAnimation = $38			;used for oil flame in phase 1
 Timer_PaulineAnimation = $39			;used for pauline animation, when zero, start animation
 Timer_PhaseEndTimer = $3A			;either win or lose
+Timer_FlameEnemyMoveDirUpdate = $3B		;used to update flame enemy's movement direction to move where the player is at (or was when it decided to move that way)
 
 ;$3C-$3E - unused
 
@@ -58,6 +59,8 @@ Timer_Transition = $43				;common timer used for changing game states, like game
 Timer_ForVertBarrelToss = $43			;another use for this timer is in 25M, when it runs out, the kong can throw a vertical barrela again
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts. (TO-DO: used for something else as well?)
 Timer_BonusScoreDecrease = $45			;timer that decreases bonus score by 100.
+
+TransitionPhase = $43				;specific values during certain transitions
 
 ;hitbox shenanigans
 HitboxA_XPos_Left = $46
@@ -73,7 +76,7 @@ HitboxB_YPos_Bottom = $4D			;after adding height
 TitleScreen_Flag = $4E				;if we're on title screen (also counts as game over flag)
 
 GameControlFlag = $4F				;if set to 0, freeze gameplay
-GameMode = $50					;bit 0 - Game A or B, bit 1 - 1 player or 2 players
+GameMode = $50					;bit 0 - Game A or B, if any of the remaining bits are set, will enable 2 player game
 
 Players = $51					;$18 - 1 player, $1C - 2 players
 Players_CurrentPlayer = $52			;who's currently in play
@@ -99,15 +102,15 @@ Entity_TimingIndex = $5D
 Barrel_CurrentIndex = $5D
 Barrel_State = $5E
 ;$64-$67 - unused
-Barrel_CurrentPlatformIndex = $68		;works the same way as Platform_HeightIndex but for barrels
+Barrel_CurrentPlatformIndex = $68		;works the same way as Jumpman_CurrentPlatformIndex but for barrels
 Barrel_GFXFrame = $72
 Barrel_ShiftDownFlag = $7D			;if set, move barrel's y-pos by 1 pixel for shifted platforms
 ;$7E - barrel related
 
 Jumpman_AlternateWalkAnimFlag = $85		;this is used to alternate walking frames. if 0, show Jumpman_GFXFrame_Walk1, if not 0, show Jumpman_GFXFrame_Walk2
-Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform jumpman's standing (otherwise used as scratch ram in a few routines).
+Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform (elevated bit or what have you) jumpman's standing on (otherwise used as scratch ram in a few routines).
 ;$87 - unused
-;$88 - timing related (similar to Entity_TimingCounter)
+;$88 - timing related (similar to Entity_TimingCounter, for player it seems)
 ;$89 - unused
 Entity_TimingCounter = $8A			;count which bit to check for the timing (CODE_DFE8)
 
@@ -137,13 +140,14 @@ Barrel_LadderBottomYPos = $A3			;when goes down the ladder checks for this value
 ;$A3 - barrel related
 
 Flame_State = $AD				;oil flame state. 0 - non-existant, 1 - init, 2 - animate, 3 - ???
+
 FlameEnemy_CurrentIndex = $AE			;
 FlameEnemy_State = $AF				;actual enemies
 FlameEnemy_Direction = $B3			;surprizingly underutilized, only used when standing in place (direction is also FlameEnemy_State)
 
 Pauline_AnimationCount = $B7			;used to change graphic frame, counts untill specified value after which stops animating for a bit
 
-FlameEnemy_LadderBoundary = $B9			;each flame enemy reserves a pair of bytes - first one stores the Y-position of the upper ladder boundary (where the flame stops climbing, either for broken or not broken ladder), and the second is the ladder's bottom boundary
+FlameEnemy_LadderBoundary = $B9			;each flame enemy reserves a pair of bytes - first one stores the Y-position of the upper ladder boundary (where the flame stops climbing, potentially to be prevented from climbing too high), and the second is the ladder's bottom boundary
 
 Hammer_DestroyingEnemy = $BF			;acts as a flag and animation counter for enemy destruction.
 
@@ -154,20 +158,25 @@ Item_RemovedFlag = $C9				;2 bytes, a flag indicating that an umbrella/a handbag
 EraseBuffer = $CC				;5 bytes, a temporary buffer used to store into actual buffer, used for handbag, bolt and umbrella removal
 
 ;$D1 - unused
-FlameEnemy_DontFollowFlag = $D2			;25M and 100M only, if set don't follow the player (but it depends on difficulty)
 
 MovingPlatform_CurrentIndex = $D2
 
-;$D3-$D5 - fire enemy related?
+FlameEnemy_DontFollowFlag = $D2			;25M and 100M only, if set don't follow the player (but it depends on difficulty) (rename? it doesn't "chase", just updates its movement direction to be towards where the player is)
 
 ;$D6-$D7 - unused
 MovingPlatform_Upward_RespawnFlag = $D8
 MovingPlatform_Downward_RespawnFlag = $D9
 Jumpman_StandingOnMovingPlatformValue = $DA	;0 - not standing on a moving platform, 1 - standing on a platform that moves up, 2 - standing on a platform that moves down
 
-FlameEnemy_Platform_HeightIndex = $E0		;same as Platform_HeightIndex but for flame enemies
+FlameEnemy_LadderEndYPos = $DB
+FlameEnemy_CurrentPlatformIndex = $E0		;same as Jumpman_CurrentPlatformIndex but for flame enemies
+FlameEnemy_TimingCounter = $E4			;similar to Entity_TimingCounter, but specifically for flame boys
 
-;$E8 - fire enemy-related
+;$E8 - fire enemy-related (timer of sorts?)
+FlameEnemy_LadderRestTime = $E8			;used for ladder movement, to make it move every few frames
+
+;EC - flame enemy...
+FlameEnemy_FollowDirection = $EC		;used to deternmine its movement direction when it randomly decides to chase the player
 
 Sound_EffectPreserved = $F0			;saves Sound_Effect or Sound_Effect2 value to keep playing said sound
 Sound_FanfareNoiseTrackOffset = $F3
@@ -196,6 +205,25 @@ LostALifeFlag = $040B				;should be pretty self explanatory, set when lost a lif
 Barrel_AnimationTimer = $040D			;animate every certain amount of frames (see Barrel_AnimateFrames)
 
 Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
+
+;these are used by jumpman and phase 2 springboards (only those use true gravity)
+Entity_GravityInitFlag = $042C			;initializes downward y-speed
+Jumpman_GravityInitFlag = $042C
+Springboard_GravityInitFlag = $042E
+
+Entity_SubYPos = $042D
+;YPos is $01
+
+Entity_DownwardSubSpeed = $0435
+Entity_DownwardSpeed = $0436
+
+Entity_UpwardSubSpeed = $043D
+Jumpman_UpwardSubSpeed = $043D
+Springboard_UpwardSubSpeed = $043F
+
+Entity_UpwardSpeed = $043E
+Jumpman_UpwardSpeed = $043E
+Springboard_UpwardSpeed = $0440
 
 ;springboards from phase 3
 Springboard_CurrentIndex = $0445
@@ -328,7 +356,7 @@ VRAMWriteCommand_DrawVert = $80			;bit 7 - change drawing from horizontal line t
 VRAMWriteCommand_Stop = $00     		;command to stop VRAM write and return from routine.
 
 ;Various background tile defines
-Tile_Empty = $24				;standart empty tile (transparent).
+Tile_Empty = $24				;standard empty tile (transparent).
 Tile_Roman_I = $66				;\a pair or roman numbers used as player number
 Tile_Roman_II = $67				;/for "PLAYER X" screen and status bar
 
@@ -338,6 +366,7 @@ VRAMLoc_LoopCount = $20BC			;only low byte is loaded, need additional code if ch
 
 ;controller input constants
 Input_A = $80
+Input_B = $40
 Input_Select = $20
 Input_Start = $10
 Input_Up = $08
@@ -408,6 +437,8 @@ Cursor_XPos = $38
 Cursor_Prop = OAMProp_Palette0
 
 Jumpman_OAM_Slot = 0
+
+;add jumpman prop somewhere?
 
 ;Jumpman graphic frames
 Jumpman_GFXFrame_Walk2 = $00
@@ -536,10 +567,12 @@ FlameEnemy100M_GFXFrame_Frame2 = $AC
 FlameEnemy_State_AnimateInPlace = $00
 FlameEnemy_State_MoveRight = $01
 FlameEnemy_State_MoveLeft = $02
-FlameEnemy_State_Climbing = $03
+;FlameEnemy_State_Climbing = $03
+FlameEnemy_State_LadderUp = $03
 FlameEnemy_State_SpawnINIT = $06		;oil barrel (25M) or just appear (100M)
 FlameEnemy_State_SpawnFromOil = $08
 FlameEnemy_State_GFXShiftUp = $10
+FlameEnemy_State_LadderDown = $13
 FlameEnemy_State_NoGFXShift = $20
 FlameEnemy_State_GFXShiftDown = $FF
 
