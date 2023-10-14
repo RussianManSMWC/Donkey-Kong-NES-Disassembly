@@ -56,11 +56,9 @@ Timer_FlameEnemySpawn = $40
 Timer_Score = $41				;2 bytes, show score sprites for a little bit
 ;$42 - unused
 Timer_Transition = $43				;common timer used for changing game states, like game over, phase init, etc. (sorta timer though it's strangely handled)
-Timer_ForVertBarrelToss = $43			;another use for this timer is in 25M, when it runs out, the kong can throw a vertical barrela again
+Timer_ForVertBarrelToss = $43				;another use for this timer is in 25M, when it runs out, the kong can throw a vertical barrel again
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts. (TO-DO: used for something else as well?)
 Timer_BonusScoreDecrease = $45			;timer that decreases bonus score by 100.
-
-TransitionPhase = $43				;specific values during certain transitions
 
 ;hitbox shenanigans
 HitboxA_XPos_Left = $46
@@ -100,17 +98,18 @@ Entity_TimingIndex = $5D
 
 ;maybe not barrel-specific vvv (for springboard as well?)
 Barrel_CurrentIndex = $5D
-Barrel_State = $5E
-;$64-$67 - unused
+Barrel_State = $5E				;each barrel table is 9 bytes long
 Barrel_CurrentPlatformIndex = $68		;works the same way as Jumpman_CurrentPlatformIndex but for barrels
 Barrel_GFXFrame = $72
 Barrel_ShiftDownFlag = $7D			;if set, move barrel's y-pos by 1 pixel for shifted platforms
-;$7E - barrel related
+
+EntitiesPerPlatform = $7E			;7 bytes. counts the amount of entities on any given platform (except the last one). entities counted are barrels, Jumpman, and if he holds a hammer, that also counts as one (this is only used in 25M).
+						;however, since the platform index always starts from 1, the first byte is technically "unused" - it's always defaulted to 0
 
 Jumpman_AlternateWalkAnimFlag = $85		;this is used to alternate walking frames. if 0, show Jumpman_GFXFrame_Walk1, if not 0, show Jumpman_GFXFrame_Walk2
 Platform_ShiftIndex = $86			;used in phase 1 to determine on which shifted platform (elevated bit or what have you) jumpman's standing on (otherwise used as scratch ram in a few routines).
 ;$87 - unused
-;$88 - timing related (similar to Entity_TimingCounter, for player it seems)
+Jumpman_TimingCounter = $88
 ;$89 - unused
 Entity_TimingCounter = $8A			;count which bit to check for the timing (CODE_DFE8)
 
@@ -136,8 +135,7 @@ Jumpman_HeldHammerIndex = $A0			;stores index of hammer that is currently being 
 Jumpman_CurrentLadderXPos = $A1			;X-position of the ladder the jumpman's currently climbing
 ;$A2 - hammer animation related
 
-Barrel_LadderBottomYPos = $A3			;when goes down the ladder checks for this value to see where the ladder aends and it should start moving like normal again
-;$A3 - barrel related
+Barrel_LadderYDestination = $A3			;when goes down the ladder checks for this value to see where the ladder ends and it should start moving like normal again
 
 Flame_State = $AD				;oil flame state. 0 - non-existant, 1 - init, 2 - animate, 3 - ???
 
@@ -149,11 +147,12 @@ Pauline_AnimationCount = $B7			;used to change graphic frame, counts untill spec
 
 FlameEnemy_LadderBoundary = $B9			;each flame enemy reserves a pair of bytes - first one stores the Y-position of the upper ladder boundary (where the flame stops climbing, potentially to be prevented from climbing too high), and the second is the ladder's bottom boundary
 
+Jumpman_ActingFlag = $BE			;set when Jumpman is performing some action (movement, dying, etc.). This is only used to check if Jumpman can pick up bonus items/activate bolts (probably for performace reasons).
 Hammer_DestroyingEnemy = $BF			;acts as a flag and animation counter for enemy destruction.
 
 ;$C0 - barrel related?
-Bolt_RemovedFlag = $C1				;6 bytes, a flag indicating that a bolt has been removed
-;C8 - unused?
+Barrel_EscapeYDestination = $C0			;When jumpman is holding a hammer, one of the barrels can move down a platform to escape, this is used to set it's Y-destination
+Bolt_RemovedFlag = $C1				;7 bytes, a flag indicating that a bolt has been removed
 Item_RemovedFlag = $C9				;2 bytes, a flag indicating that an umbrella/a handbag has been removed
 EraseBuffer = $CC				;5 bytes, a temporary buffer used to store into actual buffer, used for handbag, bolt and umbrella removal
 
@@ -204,7 +203,9 @@ LostALifeFlag = $040B				;should be pretty self explanatory, set when lost a lif
 
 Barrel_AnimationTimer = $040D			;animate every certain amount of frames (see Barrel_AnimateFrames)
 
-Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
+Barrel_VertTossHorzMovementDir = $0417		;which way to move if the movement pattern for the vertically tossed barrel is left & right. 0 - move right, 1 - move left
+Barrel_VertTossPattern = $0421			;movement pattern. 01 - move straight down, 02 - unused diagonal pattern, 03 - move in a "wave" pattern
+Barrel_VertTossLandingXPos = $042B		;stores barrel's x-position when it landes from the vertical toss, runs various adjustements depending on the distance between its current X-position and this original landing X-position
 
 ;these are used by jumpman and phase 2 springboards (only those use true gravity)
 Entity_GravityInitFlag = $042C			;initializes downward y-speed
@@ -213,12 +214,12 @@ Springboard_GravityInitFlag = $042E
 
 Entity_SubYPos = $042D
 ;YPos is $01
-
 Entity_DownwardSubSpeed = $0435
 Entity_DownwardSpeed = $0436
 
 Entity_UpwardSubSpeed = $043D
 Jumpman_UpwardSubSpeed = $043D
+Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
 Springboard_UpwardSubSpeed = $043F
 
 Entity_UpwardSpeed = $043E
@@ -325,7 +326,10 @@ PlatformSprite_OAM_X = OAM_X+(4*PlatformSprite_OAM_Slot)
 DonkeyKong_OAM_Y = OAM_Y+(4*DonkeyKong_OAM_Slot)
 DonkeyKong_OAM_X = OAM_X+(4*DonkeyKong_OAM_Slot)
 
-;RAM addresses that are "used" but do nothing.
+;RAM addresses that are "used" but do nothing (or exclusive to unused code).
+UnusedCollisionTable_0460 = $0460		;would be used in an unused routine. would contain collision-related stuff for unknown entities, it would be a dynamic table, similar to ones like DATA_C0CF, containing coordinates and collision offset for the hitbox. Last two bytes were to be set as terminators (value $FE).
+						;this table would be 19 bytes in size.
+
 Sound_ChannelsMirrorUnused = $0100		;this address isn't actually used for anything, other than being a mirror of APU_SoundChannels (being stored in but not read)
 Unused_0513 = $0513				;similar address is used in Donkey Kong Jr. NES port.
 
@@ -339,7 +343,7 @@ OAMAddress = $2003
 
 CameraPositionReg = $2005
 VRAMDrawPosReg = $2006				;first two writes set VRAM position to start drawing at (also, camera position)
-DrawRegister = $2007				;used to draw tiles, change palettes and attributes
+DrawRegister = $2007				;used to draw tiles, change palettes and attributes (maybe rename to a more general "UpdateRegister")
 
 OAMDMA = $4014					;upload $100 bytes
 
@@ -375,19 +379,14 @@ Input_Left = $02
 Input_Right = $01
 Input_AllDirectional = Input_Up|Input_Down|Input_Right|Input_Left
 
+;score related defines
+BonusScoreCounter_WhenHurryUp = $10		;how many hundreds should it hit to start playing hutty up music
+
+Jumpman_InitLives = 3				;the amount of lives given upon starting a new game
+
 ;Demo mode only, used for jumping (doesn't use controller input)
 Demo_JumpCommand = $05
 Demo_NoInput = $00
-
-;Jumpman state values
-Jumpman_State_Grounded = $01
-Jumpman_State_Climbing = $02
-Jumpman_State_Jumping = $04
-Jumpman_State_Falling = $08
-Jumpman_State_Hammer = $0A
-Jumpman_State_Dead = $FF
-
-Jumpman_InitLives = 3				;the amount of lives given upon starting a new game
 
 ;Phase values. Technically speaking title screen is $00 but it's not checked, so...
 Phase_25M = $01
@@ -463,6 +462,14 @@ Jumpman_GFXFrame_ClimbingFlipped = $54		;this isn't actually a graphic frame, bu
 Jumpman_GFXFrame_Dead_Up = $6C
 Jumpman_GFXFrame_Dead_Dead = $7C		;you want someone dead? Really dead?
 
+;Jumpman state values
+Jumpman_State_Grounded = $01
+Jumpman_State_Climbing = $02
+Jumpman_State_Jumping = $04
+Jumpman_State_Falling = $08
+Jumpman_State_Hammer = $0A
+Jumpman_State_Dead = $FF
+
 Score_OAM_Slot = 48				;each score sprite takes 2 sprite tiles, 4 in total
 Score_OneTile = $D0				;score sprite tile for 1 (for 100 points)
 Score_ThreeTile = $D1				;score sprite tile for 3 (for 300 points) (unused)
@@ -478,6 +485,8 @@ EnemyDestruction_Frame1 = $30
 EnemyDestruction_Frame2 = $34
 EnemyDestruction_Frame3 = $38
 EnemyDestruction_Frame4 = $3C
+
+EnemyDestruction_Prop = OAMProp_Palette2
 
 PaulineHead_OAM_Slot = 58			;2 tiles
 PaulineBody_OAM_Slot = 60			;4 tiles
@@ -505,15 +514,25 @@ Barrel_GFXFrame_BottomLeft = $8C
 Barrel_GFXFrame_Vertical1 = $90
 Barrel_GFXFrame_Vertical2 = $94
 
+Barrel_OAMProp = OAMProp_Palette3		;default property
+
 ;Barrel state values
 Barrel_State_HorzMovement = $01
-Barrel_State_GoDown = $02			;maybe?
+Barrel_State_GoDownLadder = $02
 Barrel_State_DropOffPlatform = $08
+Barrel_State_LandedOnPlatform = $10		;small bounce, then continues moving
+Barrel_State_GoOffscreen = $20			;when it lands on a platform, but instead of bouncing and continuing like normal, it continues moving offscreen and disappear
+Barrel_State_GoDownPanic = $40			;when jumpman is holding a hammer, one of the barrels on the same platform gets this state and just moves down to the next platform to escape the hammer
 Barrel_State_Init = $80				;general init, it'll then become either vertically tossed or horizontally
 Barrel_State_HorzTossInit = $81
-Barrel_State_VertTossInit = $C0			;maybe???
+Barrel_State_VertMovement = $C0			;
+Barrel_State_VertMovementBounce = $C1		;bounced off the platform while moving down, slow down slightly
+Barrel_State_HorzMovementAfterVertToss = $C2	;basically horizontal movement, but its supposed to light a barrel on fire.
 
-Barrel_OAMProp = OAMProp_Palette3		;default property
+;vertically tossed patterns (Barrel_State_VertMovement & Barrel_State_VertMovementBounce states)
+Barrel_VertTossPattern_StraightDown = $01	;what it says on the tin
+Barrel_VertTossPattern_DiagonalRight = $02	;unused, a simple down-right pattern (it ends up on the right side of the stage)
+Barrel_VertTossPattern_LeftAndRight = $03	;alternates between moving right and left each time it hits a platform
 
 PlatformSprite_OAM_Slot = 12			;6 pairs for 6 platforms
 PlatformSprite_Tile = $A0

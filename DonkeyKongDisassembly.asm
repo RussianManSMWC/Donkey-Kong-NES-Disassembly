@@ -36,7 +36,7 @@ Gamecube_CODE_BFEB:
 
 Gamecube_CODE_BFF0:
   LDA ControllerInput_Player1Previous		;yeah, that additional space isn't used all that much. missed opportunity...
-  AND #$08					;check for Up button - go from first option to last
+  AND #Input_Up					;check for Up on the D-pad - go from the first option to last
   ASL A						;
   ASL A						;
   ADC Cursor_OAM_Y				;
@@ -66,7 +66,6 @@ db $20,$BC,$01,$00
 ;----------------------------------------------
 
 ;Input data for demo
-;DATA_C014:
 DemoInputData_C014:
 ;probably doesn't look good. shrugio
 db Input_Right
@@ -95,7 +94,6 @@ db Input_Right
 db Input_Left
 
 ;Timings for each input (^^^) for demo
-;DATA_C028:
 DemoTimingData_C028:
 db $DB,$60,$E2,$55
 db $14,$20,$01,$F9
@@ -116,8 +114,8 @@ dw DATA_C6E4
 dw DATA_C6F1
 dw DATA_C753
 dw DATA_C708
-dw DATA_C719
-dw DATA_C71C
+dw DATA_C719					;init Donkey Kong's defeated frame
+dw DATA_C71C					;Defeated Kong frame 1
 dw DATA_C735
 dw DATA_C74E
 
@@ -126,16 +124,16 @@ dw DATA_C08C					;elevated platform data (25M)
 dw DATA_C0CF					;platform ends for jumpman to fall off (25M)
 dw DATA_C161					;broken ladder positions (25M)
 
-;doesn't look like a pointer to data in ROM, does it? maybe it is something in RAM? either way it is unused.
+;dynamic table that would be set in a routine that's not called anywhere (see UNUSED_D650)
 UNUSED_C05C:
-db $60,$04
+dw UnusedCollisionTable_0460
 
 DATA_C05E:
 dw DATA_C0C3					;25M platform collision dimensions
 dw DATA_C0DF					;25M fall area collision dimensions
 dw DATA_C16E					;25M broken ladders' collision dimensions
 
-;unused pointer to an unused table
+;collision dimensions related to the dynamic table from above (also happens to be unused)
 UNUSED_C064:
 dw UNUSED_C2C4
 
@@ -145,16 +143,13 @@ dw DATA_C186
 dw DATA_C1B0
 dw DATA_C192
 dw DATA_C1CF					;something barrel related
-dw DATA_C1D5
 
-;another unused pointer to an unused table
-UNUSED_C072:  
-dw UNUSED_C1DB
+dw DATA_C1D5					;tossed barrel platform y-positions to make it bounce off (pattern = Barrel_VertTossPattern_StraightDown)
+dw UNUSED_C1DB					;tossed barrel platform y-positions to make it bounce off (pattern = Barrel_VertTossPattern_DiagonalRight)
+dw DATA_C1E1					;tossed barrel platform y-positions to make it bounce off (pattern = Barrel_VertTossPattern_LeftAndRight)
 
-DATA_C074:
-dw DATA_C1E1
-dw DATA_C19E
-dw DATA_C1E7
+dw DATA_C19E					;
+dw DATA_C1E7					;
 
 ;Background Donkey Kong Tilemaps (there are more elsewhere)
 dw DATA_C60C
@@ -219,6 +214,7 @@ db $E0,$44,$00
 db $FE
 
 ;collision dimensions for fall areas
+;same format as before: x-offset, y-offset, width, height
 DATA_C0DF:
 db $00,$00
 db $10,$03
@@ -309,16 +305,19 @@ DATA_C16E:
 db $00,$00
 db $08,$18
 
+;ladder end destination for the barrels when they move down said ladder (first ladder to check)
 DATA_C172:
 db $CA,$A7,$8E,$6B,$51
 
-;related with barrels and ladders?
+;x-position of the ladder that the barrel can mode down (first ladder check)
 DATA_C177:
 db $5C,$2C,$4C,$2C,$64
 
+;ladder destination for the barrels when they can move down the ladder (second ladder to check)
 DATA_C17C:
 db $C6,$AA,$8C,$6D,$4D				;y-positions that the barrel should reach to change from going down the ladder state to normal horizontal movement state (???)
 
+;x-positions where the barrel can move down a ladder (once again, it's the second ladder check)
 DATA_C181:
 db $C4,$6C,$7C,$54,$C4
 
@@ -346,6 +345,8 @@ db $04,$04,$0C,$0D
 
 ;jumpman's animation frames for when holding a hammer
 DATA_C1A2:
+;the table is quite a mouthful probably
+;PlayerHammerWalkingAnimationFrames_C1A2:
 db Jumpman_GFXFrame_Walk2_HammerUp
 db Jumpman_GFXFrame_Stand_HammerUp
 db Jumpman_GFXFrame_Walk1_HammerUp
@@ -383,15 +384,20 @@ db $13,$30,$48,$60,$78,$90,$A8,$C0,$E0
 DATA_C1CD:
 db $13,$DB
 
+;Y-posisions for the falling barrel to check for to know where the platforms are to land on (when falling off a higher platform)
 DATA_C1CF:
 db $4C,$6A,$88,$A6,$C5,$FE
 
+;Y-posisions for the falling barrel to check for to know where the platforms are to bounce off (tossed by DK)
+;this is for a straight moving one
 DATA_C1D5:
 db $53,$6B,$8F,$A7,$CA,$FE
-        
+
+;these y-position values are for an unused diagonal-moving pattern
 UNUSED_C1DB:
 db $52,$6E,$8C,$AC,$C5,$FE
 
+;and lastly, the left and right moving one
 DATA_C1E1:
 db $52,$6C,$8E,$A8,$CA,$FE
 
@@ -519,8 +525,10 @@ db $B0,$40,$00
 db $90,$28,$00
 db $FE
 
+;collision/hitbox/what have you dimensions for... something.
 UNUSED_C2C4:
-db $04,$01,$1B,$0E
+db $04,$01
+db $1B,$0E
 
 ;hitbox dimensions for moving platforms (75M)
 DATA_C2C8:
@@ -715,14 +723,21 @@ dw %1111111111111111
 
 ;db $77,$77,$FF,$FF
 
+;x-positions, at which the y-position of the barrel gets affected during its bounce when it lands on a lower platform
+;when bouncing to the right
 DATA_C3FC:
 db $0B,$0C,$0D,$15,$16,$17,$18,$19
 db $1A,$1E,$1F
 
+;y-position "speeds" for bouncing barrel's motion
 DATA_C407:
-db $FF,$FF,$FF,$01,$01,$01,$01,$FF
-db $FF,$01,$01
+db $FF,$FF,$FF
+db $01,$01,$01,$01
+db $FF,$FF
+db $01,$01
 
+;x-positions, at which the y-position of the barrel gets affected during its bounce when it lands on a lower platform
+;when bouncing to the left
 DATA_C412:
 db $E4,$E3,$E2,$D8,$D7,$D6,$D5,$D4
 db $D3,$D0,$CF
@@ -773,6 +788,7 @@ db $B0,$A0,$78,$68,$68
 DATA_C448:
 db $88,$88,$88,$88,$88
 
+;barrel toss timings for DK (based on difficulty)
 DATA_C44D:
 db $48,$38,$28,$18,$18
 
@@ -783,11 +799,13 @@ db $BB,$BB,$5E,$2F,$13
 DATA_C457:
 db $88,$78,$64,$56,$49
 
+;timings for moving platforms, move every x-frames based on difficulty (bit set - move)
 DATA_C45C:
-db $88,$88,$24,$55,$55
+db %10001000,%10001000,%00100100,%01010101,%01010101
 
+;second set of bits for above
 DATA_C461:
-db $88,$88,$49,$55,$55
+db %10001000,%10001000,%01001001,%01010101,%01010101
 
 ;number of frames between each flame enemy spawn for 100M, based on difficulty
 DATA_C466:
@@ -991,6 +1009,7 @@ db $5F,$3F,$00,$2F,$7F,$7F
 UNUSED_C5B8:
 db $00
 
+;Y-positions for every bolt in 100M
 DATA_C5B9:
 db $A9,$A9,$81,$81,$59,$59,$31,$31
 
@@ -1003,6 +1022,7 @@ db $10,$E0,$00,$24,$50,$C0
 UNUSED_C5CC:
 db $00
 
+;X-positions of every bolt in 100M level
 DATA_C5CD:
 db $3B,$B3,$3B,$B3,$3B,$B3,$38,$B3
 
@@ -1063,17 +1083,17 @@ db $0B
 ;------------------------------------------
 
 ;score sprite data
-;there's data for completely unused 300 score.
+;there's data for completely unused 300 score bonus.
 
 ;Score values added to score counter (hundreds)
-DATA_C600:
+ScorePointAwards_C600:
 db $01						;100
 db $03						;300 (unused)
 db $05						;500
 db $08						;800
 
 ;score sprite tile
-DATA_C604:
+ScoreSpriteTiles_C604:
 db Score_OneTile				;1 for 100
 db Score_ThreeTile				;3 for 300 (unused)
 db Score_FiveTile				;5 for 500
@@ -1452,7 +1472,7 @@ STA $00						;
 
 LDA DATA_C4A7+1,X				;
 STA $01						;
-JMP CODE_F228					;jump to drawing routine
+JMP UpdateScreen_F228				;draw or update something on screen
 
 ;this one uses buffer. used for palettes and kong updates and probably other stuff.
 ;GetDrawPointerBuffer_C815:
@@ -1531,7 +1551,7 @@ LDA #<BufferAddr				;\set indirect addressing RAM ($0331)
 STA $00						;|
 LDA #>BufferAddr				;|(buffer for various tile updates, like Kong animation
 STA $01						;/
-JSR CODE_F228					;draw tiles
+JSR UpdateScreen_F228				;draw tiles (or update palette or tile attributes or what have you)
 
 LDA #$00					;
 STA BufferOffset				;reset buffer index
@@ -1883,7 +1903,7 @@ STA Score_Top,X					;store top score for game A or B
 
 LDA ScoreDisplay_Top+1				;
 STA Score_Top+1,X				;
-JMP CODE_CBF5					;display GAME OVER
+JMP ShowGameOverMessage_CBF5			;display GAME OVER
 
 CODE_CA79:
 LDX Players_CurrentPlayer			;
@@ -2030,14 +2050,14 @@ if Version = JP
   RTS						;
 
 JP_CODE_CB28:
-  DEC $43					;
+  DEC Timer_Transition				;
   JSR ClearScreenAndRemoveSpriteTiles_CA53	;
   JMP JP_CODE_CBC6				;actually more optimal than REV1? color me surprised (show player X string for 2P mode)
 
 JP_CODE_CB30:
   JSR JP_DisableRenderAndClearScreen_CBB3	;no tiles on screen... and no screen on screen because no render
 
-  DEC $43					;
+  DEC Timer_Transition				;
 
   LDA Demo_Active				;demo?
   BNE JP_CODE_CB3D				;no sound and stuff
@@ -2081,7 +2101,7 @@ RETURN_CB46:
   RTS						;
 
 CODE_CB47:
-  DEC $43					;
+  DEC Timer_Transition				;
 endif
 
 JP_CODE_CB3D:
@@ -2225,8 +2245,7 @@ STA BufferAddr+20				;
 RETURN_CBF4:
 RTS						;
 
-;ShowGameOver_CBF5:
-CODE_CBF5:  
+ShowGameOverMessage_CBF5:
 LDY #$00					;
 
 LOOP_CBF7:
@@ -2494,7 +2513,7 @@ CODE_CD69:
 JMP CODE_CDB1					;
 
 CODE_CD6C:
-JMP CODE_CE24					;
+JMP CODE_CE24					;animate defeated kongey donk
 
 CODE_CD6F:
 LDY #$0C					;\remove HUD
@@ -2589,12 +2608,12 @@ LDA DonkeyKong_OAM_X				;same X-pos
 STA $00						;
 JMP CODE_CDCA					;update image
 
-CODE_CDEF:  
-LDA #Sound_Effect_Hit
-STA Sound_Effect
+CODE_CDEF:
+LDA #Sound_Effect_Hit				;rough landing
+STA Sound_Effect				;
 
 ;remove DK's sprite tiles, then draw BG donkey kong
-CODE_CDF3:  
+CODE_CDF3:
 LDA #4*6					;remember 4 rows with 6 tiles each? this much we're removing
 STA $03						;
 
@@ -2608,41 +2627,41 @@ LDA #$23					;and hibyte ofc
 STA $01						;
 
 LDA #$12					;
-JSR CODE_C815					;
-      
+JSR CODE_C815					;init Donkey Kong's defeated frame (attributes + flows into drawing frame 2)
+
 LDA #$01					;
 JMP CODE_CE0E					;another gem.
 
-;animate BG Kong
+;animate defeated BG Kong
 CODE_CE0E:
-PHP                      
-LDA #$8D                 
-STA $00
+PHP						;
+LDA #$8D					;VRAM position for his tiled glory
+STA $00						;
 
-LDA #$22                 
-STA $01                  
-PLP                      
-BNE CODE_CE1F
+LDA #$22					;
+STA $01						;
+PLP                      			;
+BNE CODE_CE1F					;A is not 0 (from LDA) - draw frame 2
 
 LDA #$16					;
 JMP CODE_C815					;draw defeated kong frame 1
 
-CODE_CE1F:   
+CODE_CE1F:
 LDA #$14					;
 JMP CODE_C815					;frame 2
 
 CODE_CE24:  
-CMP #$85
-BEQ CODE_CE2F
+CMP #$85					;planted donkey?
+BEQ CODE_CE2F					;init a few things before playing his defeat animation
 
-LDA $43                  
-AND #$01                 
-JMP CODE_CE0E
+LDA Timer_Transition				;animate defeat every few frames
+AND #$01					;
+JMP CODE_CE0E					;
 
 ;when the kong's defeated, initialize some things (place pauline and jumpman on the platform, heart, sound and what have you)
 CODE_CE2F:
-LDA #Sound_Fanfare_KongDefeated
-STA Sound_Fanfare
+LDA #Sound_Fanfare_KongDefeated			;
+STA Sound_Fanfare				;a little jingle that confirms that yes, you just beat Donkey Kong. Go you!
 
 LDY #$04					;draw platform with pauline and jumpman on
 LDA #$18					;
@@ -2653,7 +2672,7 @@ LDA #Ending_Heart_XPos				;
 STA $00						;
 
 LDA #Ending_Heart_YPos				;
-STA $01
+STA $01						;
 
 LDA #Heart_OAM_Tile				;tile
 STA $02						;
@@ -2664,7 +2683,7 @@ STA $03						;
 LDA #Heart_OAM_Slot*4				;OAM slot
 JSR CODE_F080					;draw!
 
-DEC Timer_Transition
+DEC Timer_Transition				;
 
 LDA #Ending_Jumpman_XPos			;x-pos
 STA $00						;
@@ -2757,8 +2776,8 @@ JSR CODE_D175					;get player's directions & maybe jump
 
 CODE_CED6:
 JSR CODE_EB06					;DK animations
-JSR CODE_EBB6					;handle bonus counter (decrease over time & kill the player)
-JSR CODE_D041					;bonus counter hurry up check
+JSR HandleBonusCounter_EBB6			;handle bonus counter (decrease over time & kill the player)
+JSR HandleHurryUpMusic_D041			;play hurry up music when the bonus counter is low enough
 JSR CODE_D1A4					;handle player's state
 JSR CODE_EA5F					;animate pauline sometimes
 JSR CODE_E1E5					;flame enemy spawning or smth
@@ -2771,10 +2790,10 @@ BEQ CODE_CF01					;
 CMP #Phase_100M					;handle following fires in phase 3 
 BEQ CODE_CF0D					;
 
-JSR CODE_DA16					;barrels of phase 1   
-JSR CODE_E19A					;handle oil barrel flame
-JSR CODE_EC29
-JMP CODE_CF1C
+JSR RunBarrels_DA16				;barrels of phase 1   
+JSR RunOilBarrelFlame_E19A			;handle oil barrel flame
+JSR CODE_EC29					;make jumpman interact with various things (in this case, it's barrels and stuff) (this should've been a common routine btw)
+JMP CODE_CF1C					;common stuff
 
 CODE_CF01:
 JSR RunMovingPlatforms_E834			;handle platform lifts
@@ -2790,7 +2809,7 @@ CODE_CF13:
 JSR CODE_EE0C					;destroyed-by-hammer enemy animation
 JMP CODE_CF1C					;
 
-CODE_CF19:  
+CODE_CF19:
 JSR CODE_D0C0					;death state exclusive routine (animate?)
 
 CODE_CF1C:
@@ -2801,7 +2820,7 @@ BNE RETURN_CF2A
 
 JSR CODE_D04C					;check for a win situation
 JSR HandleTimers_F4AC				;handle global timers
-  
+
 RETURN_CF2A:
 RTS						;
 
@@ -2894,7 +2913,7 @@ LDA RenderMirror				;disable sprite render
 ORA #$10					;
 STA RenderMirror				;
 RTS						;
- 
+
 ;erase score sprite graphics
 ;Score_Remove_CFA8:
 CODE_CFA8:
@@ -2904,11 +2923,11 @@ LDY #$00					;
 LOOP_CFAC:
 LDA Timer_Score,X				;if it's not time to erase
 BNE CODE_CFB8					;don't
-   
+
 LDA #$FF					;
 STA Score_OAM_Y,Y				;
 STA Score_OAM_Y+4,Y				;
-  
+
 CODE_CFB8:
 INX						;
 INY						;
@@ -2926,7 +2945,7 @@ RTS						;
 ;score sprite functionality (graphics, score addition)
 ;init?
 ;input:
-;X - score value (see DATA_C600)
+;X - score reward index (values taken from ScorePointAwards_C600)
 ;$05 - score X-position
 ;$06 - score Y-position
 CODE_CFC6:
@@ -2950,7 +2969,7 @@ LDA $06						;Y-position
 STA Score_OAM_Y,Y				;
 STA Score_OAM_Y+4,Y				;
 
-LDA DATA_C604,X					;load first score tile depending on what value (200, 300, etc.)
+LDA ScoreSpriteTiles_C604,X			;load first score tile depending on what value (200, 300, etc.)
 STA Score_OAM_Tile,Y				;
 
 LDA #Score_TwoZeroTile				;00 ending tile for all values
@@ -2977,40 +2996,38 @@ RTS						;no score spawn (did add to the counter)
 
 ;score addition (from score sprites)
 CODE_D008:
-TXA           
-PHA                      
-TYA
-PHA
+TXA						;
+PHA						;
+TYA						;
+PHA						;
 
-;added score flag?
-LDA $58                  
-BNE CODE_D02A
+LDA Demo_Active					;in demo?
+BNE CODE_D02A					;don't mess with the score during that
 
-;set-up for score addition to the counter
-LDA $52                  
-ORA #$18                 
-STA $01
+LDA Players_CurrentPlayer			;add score to the corresponding player's counter
+ORA #$18					;
+STA $01						;
 
-LDA DATA_C600,X 
-STA $00
+LDA ScorePointAwards_C600,X			;score reward based on the number
+STA $00						;
 
 LDA $05						;save positions
-PHA
-LDA $06                  
-PHA
+PHA						;
+LDA $06						;
+PHA						;
 JSR CODE_F342					;score routine
-PLA
-STA $06 
-PLA 
-STA $05
-  
+PLA						;
+STA $06						;
+PLA						;
+STA $05						;
+
 CODE_D02A:
 JSR UpdateTOPScorePrep_D032			;update TOP score
-PLA                      
-TAY                      
 PLA						;
-TAX
-RTS 
+TAY						;
+PLA						;
+TAX						;
+RTS						;
 
 UpdateTOPScorePrep_D032:
 LDA Score_UpdateFlag				;
@@ -3021,10 +3038,10 @@ LDA #$F9					;
 STA $00						;
 JMP UpdateTOPScore_F435				;compare TOP and player scores
 
-CODE_D041:
+HandleHurryUpMusic_D041:
 LDA ScoreDisplay_Bonus				;if bonus score is less than 1000, play hurry up sound
-CMP #$10					;
-BPL RETURN_D04B
+CMP #BonusScoreCounter_WhenHurryUp		;
+BPL RETURN_D04B					;
 
 LDA #Sound_Music_HurryUp			;play hurry up music
 STA Sound_Music					;
@@ -3126,8 +3143,8 @@ CODE_D0C0:
 LDA #Sound_Music_Silence			;no music during death 
 STA Sound_Music					;
 
-LDA #$10					;
-JSR CODE_D9E6					;
+LDA #%00010000					;activate every 8 frames
+JSR JumpmanTiming_BothBytes_D9E6		;
 BEQ RETURN_D138					;
 
 LDA Jumpman_Death_FlipTimer			;
@@ -3219,9 +3236,10 @@ BEQ CODE_D139					;
 RETURN_D138:
 RTS						;
 
+;player died, return to title screen or reload the level
 CODE_D139:
 LDX Players_CurrentPlayer			;
-JSR CODE_CAB9					;
+JSR CODE_CAB9					;save player variables
 
 LDA Jumpman_Lives				;if jumpman still has some lives to spare
 BNE CODE_D14B					;just restart the phase
@@ -3233,7 +3251,7 @@ LDA #$87					;transition onto the title screen!
 STA Timer_Transition				;
 RTS						;
 
-;seems to be related with death (and player switching)
+;lost life, no gameplay yet and switch players if in 2P mode
 CODE_D14B:
 LDA Players					;
 CMP #Players_2Players				;
@@ -3359,12 +3377,12 @@ JMP CODE_D28B					;check ladder
 
 ;moving left or right
 CODE_D1E5:
-LDA #$DB					;bits...
+LDA #%11011011					;
 STA $0A						;
 
-LDA #$36					;more bits...
-JSR CODE_D9E8					;yeah, i'm still not sure how this works
-BNE CODE_D1F3					;i think move only certain frames (or all frames?
+LDA #%00110110					;alternates between run for 2 frames, then resume after 2 frames for another round (there is one inconsistency towards the end where you need to wait 3 frames)
+JSR JumpmanTiming_D9E8				;
+BNE CODE_D1F3					;only run when the time is right
 JMP CODE_D275					;
 
 CODE_D1F3:
@@ -3384,7 +3402,7 @@ JMP CODE_D208					;
 CODE_D205:
 DEC Jumpman_OAM_X				;move left
 
-CODE_D208:  
+CODE_D208:
 JSR CODE_D2CB					;check if on platform
 STA Jumpman_OnPlatformFlag			;
 
@@ -3532,16 +3550,16 @@ CMP #Jumpman_State_Jumping			;i think those checks are for vertical pos update
 BEQ CODE_D2DD					;
 CMP #Jumpman_State_Falling			;
 BEQ CODE_D2DD					;
- 
-LDA #$2C
-JMP CODE_D2DF
-  
+
+LDA #$2C					;
+JMP CODE_D2DF					;
+
 CODE_D2DD:
 LDA #$4A					;different collision box when jumping or falling?
-  
+
 CODE_D2DF:
 JSR CODE_EFE8					;collision-related
- 
+
 LDA PhaseNo					;calculate pointer offset based on current phase
 CMP #Phase_25M					;
 BEQ CODE_D2F0					;
@@ -3582,7 +3600,7 @@ BNE CODE_D323					;
 
 JSR CODE_D326					;handle moving platforms (lifts), can stand on 'em
 STA $0C						;
-  
+
 CODE_D323:
 LDA $0C						;
 RTS						;
@@ -3663,10 +3681,10 @@ BEQ CODE_D38E					;
 CMP #Input_Down					;move down?
 BEQ CODE_D38B					;
 JMP CODE_D4CF					;not moving
-  
+
 CODE_D38B:
 JMP CODE_D432					;move down
-  
+
 CODE_D38E:
 LDA Jumpman_OnPlatformFlag			;on platform?
 BEQ CODE_D39C					;continue clumbing
@@ -3675,13 +3693,13 @@ JSR JumpmanPosToScratch_EAE1			;jumpman's position to scratch ram
 DEC $01						;go up
 JSR CODE_D50A					;climb from platform
 BNE CODE_D3CD					;
-  
+
 CODE_D39C:
-LDA #$24					;
+LDA #%00100100					;
 STA $0A						;
 
-LDA #$49					;something bit-related
-JSR CODE_D9E8					;
+LDA #%01001001					;run every now and then
+JSR JumpmanTiming_D9E8				;
 BNE CODE_D3AF					;
 
 LDA Jumpman_OAM_Y				;y-pos to scrath ram
@@ -3690,11 +3708,11 @@ JMP CODE_D4CF					;skip it all
 
 CODE_D3AF:
 JSR CODE_D50A					;check if encountered ladder top or broken space
-BEQ CODE_D3E7
+BEQ CODE_D3E7					;
 CMP #$02					;02 - broken space
 BNE CODE_D3BB					;
 JMP CODE_D4CF					;
-  
+
 CODE_D3BB:
 LDA Jumpman_ClimbOnPlatAnimCounter		;
 BEQ CODE_D3D0					;
@@ -3711,10 +3729,10 @@ JMP CODE_D3D2					;
 
 CODE_D3CD:
 JMP CODE_D4CF					;
-  
+
 CODE_D3D0:
 LDA #$01					;
-  
+
 CODE_D3D2:
 STA Jumpman_ClimbOnPlatAnimCounter		;
 TAX						;
@@ -3740,10 +3758,10 @@ BCC CODE_D3FB					;
 
 LDA #$01					;set to 1
 JMP CODE_D3FB					;
-  
+
 CODE_D3F9:
 LDA #$02					;
-  
+
 CODE_D3FB:
 STA Jumpman_ClimbAnimCounter			;
 TAX						;
@@ -3755,7 +3773,7 @@ LDA #$00					;
 STA Jumpman_OnPlatformFlag			;again, not grounded!
 STA Jumpman_ClimbOnPlatAnimCounter		;
 JSR Jumpman_MoveLadderUp_D4EE			;
-  
+
 CODE_D40D:
 LDA Jumpman_CurrentLadderXPos			;player's X-position
 STA $00						;
@@ -3764,7 +3782,7 @@ JSR SpriteDrawingPREP_Draw16x16_EAD1		;draw 16x16
 
 LDA #<Jumpman_OAM_Y				;
 STA $04						;
- 
+
 LDA $02						;check if we've got $54 from the data above
 CMP #Jumpman_GFXFrame_ClimbingFlipped		;
 BEQ CODE_D426					;yes, load normal climbing frame but flip horizontally
@@ -3790,17 +3808,17 @@ JSR JumpmanPosToScratch_EAE1			;
 
 INC $01						;move down
 JSR CODE_D50A					;also, run JumpmanPosToScratch_EAE1 again and other stuff... (which means above INC $01 is pointless)
-CMP #$01                 
-BEQ CODE_D445
-JMP CODE_D4CF
-  
+CMP #$01					;
+BEQ CODE_D445					;
+JMP CODE_D4CF					;
+
 CODE_D445:
-LDA #$24					;this is pointless because of CODE_D9E6 (will be set to $49)
+LDA #%00100100					;this is pointless because of JumpmanTiming_BothBytes_D9E6 (will be set to %01001001)
 STA $0A						;
 
-LDA #$49					;
-STA $0B						;this is also unecessary because this is stored to in subroutine
-JSR CODE_D9E6					;
+LDA #%01001001					;this is also unecessary because this is stored to in the subroutine
+STA $0B						;that also makes timing inconsistent (the bits will look like this: %0100100101001001, which means sometimes it'll activate every 3 frames, or 2 frames)
+JSR JumpmanTiming_BothBytes_D9E6		;(most likely supposed to be JSR JumpmanTiming_D9E8)
 BNE CODE_D45A					;
 
 LDA Jumpman_OAM_Y				;temp store
@@ -3988,11 +4006,11 @@ LDA $08						;
 RTS						;
 
 CODE_D547:
-LDA #$FF					;
-JSR CODE_D9E6					;update every frame... is this even needed?
+LDA #%11111111					;
+JSR JumpmanTiming_BothBytes_D9E6		;update every frame... is this even needed?
 CMP #$00					;FeelsBadMan
 BNE CODE_D551					;
-RTS						;untriggered
+RTS						;since it's always activated, this is never activated.
 
 CODE_D551:
 LDA Jumpman_LandingFrameCounter			;likely Jumpman_LandingFrameCounter in this context
@@ -4184,67 +4202,67 @@ RTS						;
 
 ;----------------------------------------------
 ;!UNUSED
-;unknown block of code. collision related?
+;a block of code related with some hitbox colliding with jumpman, making him fall off. potentially related to the scrapped 50M (I would've said it's related to the moving platforms from 75M, but the OAM locations don't match)
 
 UNUSED_D650:
-LDA #$FE                 
-STA $0472                
-STA $0473
+LDA #$FE					;a terminator for the collision check stuff
+STA UnusedCollisionTable_0460+18		;
+STA UnusedCollisionTable_0460+19		;twice, because why not
 
-LDX #$00                 
-LDY #$60
+LDX #$00					;
+LDY #24*4					;starting OAM slot is 24
 
 CODE_D65C:
-LDA $0200,Y              
-CMP #$FF                 
-BEQ CODE_D672                
-STA $0461,X
+LDA OAM_Y,Y					;is this something even on screen?
+CMP #$FF					;
+BEQ CODE_D672					;negative, move stuff elsewhere
+STA UnusedCollisionTable_0460+1,X		;Y-pos
 
-LDA $0203,Y              
-SEC                      
-SBC #$08                 
-STA $0460,X              
-JMP CODE_D67A
-  
+LDA OAM_X,Y					;X-pos, and move to the left 8px
+SEC						;
+SBC #$08					;
+STA UnusedCollisionTable_0460,X			;
+JMP CODE_D67A					;
+
 CODE_D672:
-LDA #$00                 
-STA $0461,X              
-STA $0460,X
-  
+LDA #$00					;practically no hitbox (actually it's just at the very top-left of the screen, but shh)
+STA UnusedCollisionTable_0460+1,X		;
+STA UnusedCollisionTable_0460,X			;
+
 CODE_D67A:
-TYA                      
-CLC                      
-ADC #$08                 
-TAY                      
-INX                      
-INX                      
-INX                      
-CPY #$90                 
-BNE CODE_D65C
+TYA						;
+CLC						;
+ADC #$08					;confirmed that this entity takes 2 OAM slots
+TAY						;
+INX						;
+INX						;
+INX						;third byte is supposed to an offset for the collision table, and should be left at 0
+CPY #36*4					;6 of these unknown entities (36-24, then divide by 2).
+BNE CODE_D65C					;
 
-LDA #$20                 
-JSR CODE_C831                
-JSR CODE_D8AD
-BEQ RETURN_D696					;not moving, return
+LDA #$20					;prepare tables
+JSR CODE_C831					;collision detection... with ALL of these unknown thingas
+JSR CODE_D8AD					;
+BEQ RETURN_D696					;no collision at all
 
-LDA #Jumpman_State_Falling			;we're falling
-STA Jumpman_State
-  
-LDA #$01
+LDA #Jumpman_State_Falling			;whatever we just collided with, we fall off.
+STA Jumpman_State				;
+
+LDA #$01					;did actually collide
 
 RETURN_D696:
-RTS
+RTS						;
 ;----------------------------------------------
 
 ;Jumpman is falling!!! AAA
 CODE_D697:
-LDA #$FF					;update... always?
-JSR CODE_D9E6					;
+LDA #%11111111					;update... always?
+JSR JumpmanTiming_BothBytes_D9E6		;
 BEQ RETURN_D6C5					;
 
 JSR JumpmanPosToScratch_EAE1			;
 INC $01						;fall down & quick!
-INC $01
+INC $01						;
 
 LDA Direction_Horz				;
 CMP #Input_Left					;
@@ -4258,34 +4276,34 @@ LDA Jumpman_OAM_Tile				;keep the same frame but with -2
 SEC						;
 SBC #$02					;(becuase first OAM tile is actually the last tile for non-flipped sprite) (when i mean last i mean on the same row)
 
-CODE_D6B7:  
+CODE_D6B7:
 STA $02						;
-  
+
 JSR CODE_F075					;draw da player
 
 JSR CODE_D2CB					;check for platform
 BEQ RETURN_D6C5					;
-      
+
 LDA #Jumpman_State_Dead				;
 STA Jumpman_State				;Jumpman dies
-  
+
 RETURN_D6C5:
 RTS						;
 
 ;movement & animation with hammer
 CODE_D6C6:
-LDA Timer_Hammer				;
-BNE CODE_D6CD
-JMP CODE_D7BF
+LDA Timer_Hammer				;check for hammer timer
+BNE CODE_D6CD					;continue hammering the point home
+JMP CODE_D7BF					;oops, I don't have any more quarters to insert to make the hammer work again
 
 CODE_D6CD:
-LDA #$DB                 
-STA $0A
+LDA #%11011011					;
+STA $0A						;
 
-LDA #$36                 
-JSR CODE_D9E8                
-BNE CODE_D6D9
-RTS
+LDA #%00110110					;
+JSR JumpmanTiming_D9E8				;
+BNE CODE_D6D9					;every some frames, do hammer stuff.
+RTS						;
 
 CODE_D6D9:
 JSR CODE_D990					;check boundaries
@@ -4300,14 +4318,14 @@ BEQ CODE_D710					;moving left
 ;stationary
 CODE_D6E8:  
 LDA $A2						;i think this is for animation timing
-ASL A
-STA $A2
+ASL A						;
+STA $A2						;
 BEQ CODE_D6F2					;
 JMP CODE_D753					;don't animate
 
 CODE_D6F2:  
 LDA #$20                 
-STA $A2
+STA $A2						;I have yet to figure out how this works
 
 ;animate moving w/ hammer
 LDA Hammer_JumpmanFrame
@@ -4321,18 +4339,18 @@ JMP CODE_D705
 
 CODE_D703: 
 LDA #$05
-  
+
 CODE_D705:
 STA Hammer_JumpmanFrame
 JMP CODE_D753
-  
+
 CODE_D70A:
 INC Jumpman_OAM_X				;move right
 JMP CODE_D713
 
-CODE_D710:  
+CODE_D710:
 DEC Jumpman_OAM_X				;move left
-  
+
 CODE_D713:
 JSR CODE_D2CB
 STA Jumpman_OnPlatformFlag			;stay on platform i think
@@ -4352,10 +4370,10 @@ ADC Jumpman_OAM_Y				;
 STA Jumpman_OAM_Y				;
 
 CODE_D732:  
-JSR CODE_D36A
-BEQ CODE_D73E
+JSR CODE_D36A					;see if the player is standing on a platform
+BEQ CODE_D73E					;if so, keep hammering
 
-LDA #Jumpman_State_Falling
+LDA #Jumpman_State_Falling			;fell off the platform, oopsie!
 STA Jumpman_State
 JMP CODE_D7BF
 
@@ -4478,7 +4496,7 @@ LDA #$00					;
 STA Hammer_CanGrabFlag				;
 
 LDA #<Hammers_OAM_Y				;
-  
+
 CODE_D7DA:
 STA $04						;
 JSR CODE_F094					;remove the hammer
@@ -4625,7 +4643,7 @@ LDA #$00					;no hammer thank you very much
 STA Jumpman_HeldHammerIndex			;
 RTS						;
 
-;check collision between player and something (be it a platform shift or a broken ladder) using pointers for hitbox position and width/height (i think???)
+;check collision between player and something (be it a platform shift or a broken ladder) using pointers for hitbox position and width/height
 CODE_D8AD:
 LDA #$F3					;idk
 STA $0B						;
@@ -4662,10 +4680,10 @@ CMP #$FE					;
 BEQ CODE_D8E6					;terminate
 JMP LOOP_D8B9					;keep on looping
 
-CODE_D8E1:  
+CODE_D8E1:
 LDA #$01					;contact success
 JMP CODE_D8E8					;
-  
+
 CODE_D8E6:
 LDA #$00					;contact epic fail
 
@@ -4865,7 +4883,7 @@ CODE_D9E3:
 LDA #$00					;A = 0 - opposite of what i said above
 RTS						;
 
-;used for player it seems
+;used for player to run his routines depending on current frame
 ;uses bitwise check for which frame to update the player's stuff
 ;input:
 ;$0A - timing for the first 8 bits
@@ -4878,21 +4896,21 @@ RTS						;
 ;$88 = 3 - checks bit 3 of $0A - run the routine
 ;and so on
 
-CODE_D9E6:
+JumpmanTiming_BothBytes_D9E6:
 STA $0A						;
 
-CODE_D9E8:
+JumpmanTiming_D9E8:
 STA $0B						;
 
-INC $88						;
-LDA $88						;doesn't check for negative interestingly enough (unlike other similar routines later on)
+INC Jumpman_TimingCounter			;
+LDA Jumpman_TimingCounter			;doesn't check for negative interestingly enough (unlike other similar routines later on)
 CMP #$0F					;if 15, reset and do a thing (that means it skips over a single bit...)
 BCS CODE_D9F5					;reset
 JMP CODE_D9F9					;
 
 CODE_D9F5:
 LDA #$00					;
-STA $88						;start checking from bit 0 again
+STA Jumpman_TimingCounter			;start checking from bit 0 again
 
 CODE_D9F9:
 CMP #$08					;check if more than 8
@@ -4915,11 +4933,11 @@ BEQ CODE_DA13					;
 LDA #$01					;output 1 and run whatever's after this
 
 CODE_DA13:
-STA $BE						;store here i guess
+STA Jumpman_ActingFlag				;wether jumpman is doing something or not, store here
 RTS						;
 
-CODE_DA16:
-JSR CODE_E166					;
+RunBarrels_DA16:
+JSR CODE_E166					;count all entities on all platforms
 
 LDA #$00					;
 STA Barrel_CurrentIndex				;
@@ -4942,7 +4960,7 @@ STA Barrel_State,X				;store enable bit
 LDA #$10					;barrel hold timer, basically it'll stay in place for this amount of frames
 STA Timer_BarrelHold				;
 
-JSR CODE_EAF7					;get difficuly
+JSR GetCurrentDifficulty_EAF7			;get difficuly
 LDA CODE_C443,X					;load timer for next barrel throw
 STA Timer_EntitySpawn				;
 
@@ -4974,25 +4992,25 @@ CMP #Barrel_State_Init				;general initialization, become vertical or horizontal
 BEQ CODE_DA7D					;
 CMP #Barrel_State_HorzTossInit			;appear to the side and start moving
 BEQ CODE_DA80					;
-CMP #$01                 
+CMP #Barrel_State_HorzMovement			;
 BEQ CODE_DA83					;horizontal move on platform
-CMP #$02
+CMP #Barrel_State_GoDownLadder			;
 BEQ CODE_DA86					;going down a ladder
-CMP #$C0                 
-BEQ CODE_DA89					;
-CMP #$C1                 
-BEQ CODE_DA89					;
-CMP #$C2                 
-BEQ CODE_DA89					;tossed down states?
-CMP #$08                 
-BEQ CODE_DA8F                
-CMP #$10                 
-BEQ CODE_DA92                
-CMP #$20                 
-BEQ CODE_DA95                
-CMP #$40                 
-BEQ CODE_DA98					;vertical movement, a different one from the very first barrel?
-RTS						;unused RTS. cool.
+CMP #Barrel_State_VertMovement			;
+BEQ CODE_DA89					;tossed down
+CMP #Barrel_State_VertMovementBounce		;
+BEQ CODE_DA89					;bounced off a platform on its tossed way down
+CMP #Barrel_State_HorzMovementAfterVertToss	;
+BEQ CODE_DA89					;recover from being tossed down and move horizontally
+CMP #Barrel_State_DropOffPlatform		;
+BEQ CODE_DA8F					;didnt go down any of the ladders and approached a ledge end... uh oh!
+CMP #Barrel_State_LandedOnPlatform		;
+BEQ CODE_DA92					;after landing on the platform, bounce
+CMP #Barrel_State_GoOffscreen			;
+BEQ CODE_DA95					;after landing on the platform, just go offscreen
+CMP #Barrel_State_GoDownPanic			;
+BEQ CODE_DA98					;vertical movement, except it's from the hammer threat
+RTS						;unused RTS. Cool.
 
 CODE_DA7D:
 JMP CODE_DA9C					;toss init
@@ -5004,10 +5022,10 @@ CODE_DA83:
 JMP CODE_DB2C					;horizontally move like normal
 
 CODE_DA86:
-JMP CODE_DC30
+JMP CODE_DC30					;going down the ladder
 
 CODE_DA89:
-LDA $0421,X					;toss down
+LDA $0421,X					;all states related to being tossed down
 JMP CODE_DD8B					;
 
 CODE_DA8F:
@@ -5015,13 +5033,17 @@ JMP CODE_DC69					;falling down from platform to platform
 
 CODE_DA92:  
 JMP CODE_DCD0					;landed from platform to platform and bounces
-  
+
 CODE_DA95:
-JMP CODE_DD32
-  
+JMP CODE_DD32					;go offscreen
+
 CODE_DA98:
 JSR CODE_DF07					;not JMP this time, HMM?
-RTS
+RTS						;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - ABOUT TO BE TOSSED
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CODE_DA9C:
 JSR GetBarrelOAM_EFD5				;
@@ -5042,7 +5064,7 @@ JSR CODE_EADB					;draw the barrel
 LDA Timer_BarrelHold				;are we still holding the barrel?
 BNE RETURN_DAFF					;well, hold still
 
-LDA #$81					;horizontal kind probably
+LDA #Barrel_State_HorzTossInit			;horizontal kind probably
 LDX Barrel_CurrentIndex				;
 STA Barrel_State,X				;
 
@@ -5057,50 +5079,53 @@ CODE_DAC3:
 LDA Barrel_CurrentIndex				;check barrel's index
 BNE RETURN_DAFF					;the vertical is only one and only slot 0
 
-LDA #$C0					;vertical barrel thing
+LDA #Barrel_State_VertMovement			;vertical barrel thing
 LDX Barrel_CurrentIndex				;
 STA Barrel_State,X				;
 
-LDA #$01                 
-STA $0421,X
-JMP CODE_DAF7
+LDA #Barrel_VertTossPattern_StraightDown	;down it goes
+STA Barrel_VertTossPattern,X			;
+JMP CODE_DAF7					;
 
 CODE_DAD5:
-LDA $43						;timer for the next vertical barrel toss
+LDA Timer_ForVertBarrelToss			;timer for the next vertical barrel toss
 BNE RETURN_DAFF					;
 
 LDA Barrel_CurrentIndex				;ORA - exists
 BNE RETURN_DAFF					;Nintendo - lol, no
 
-LDA #$C0
-LDX $5D
-STA $5E,X
+LDA #Barrel_State_VertMovement			;start moving down
+LDX Barrel_CurrentIndex				;
+STA Barrel_State,X				;
 
-LDA $0421,X
-CMP #$01
-BNE CODE_DAF2
+LDA Barrel_VertTossPattern,X			;check if it has moved straight down last time, will alternate patterns
+CMP #Barrel_VertTossPattern_StraightDown	;
+BNE CODE_DAF2					;
 
-LDA #$03                 
-STA $0421,X              
-JMP CODE_DAF7
-  
+LDA #Barrel_VertTossPattern_LeftAndRight	;left & right wave-like pattern
+STA Barrel_VertTossPattern,X			;
+JMP CODE_DAF7					;
+
 CODE_DAF2:
-LDA #$01                 
-STA $0421,X
-  
+LDA #Barrel_VertTossPattern_StraightDown	;straight down again
+STA Barrel_VertTossPattern,X			;
+
 CODE_DAF7:
-JSR CODE_EAF7					;load difficulty
+JSR GetCurrentDifficulty_EAF7			;load difficulty
 
-LDA DATA_C44D,X
-STA $43						;some kinda timer, not transition since we're just playing...
-  
+LDA DATA_C44D,X					;
+STA Timer_ForVertBarrelToss			;time for vertical barrel toss (the harder the game, the more frequent it is)
+
 RETURN_DAFF:
-RTS
+RTS						;
 
-;barrel tossed to the side
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - GOT TOSSED HORIZONTALLY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 CODE_DB00:
-LDA #$55					;every other frame (for the entity's frame counter)
-JSR CODE_DFE4					;
+LDA #%01010101					;every other frame (for the entity's frame counter)
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DB21					;since the entity's frame counter was set to 0, first frame it won't trigger this, it'll initi its position to the side and make kong display his frame
 
 JSR GetBarrelOAM_EFD5				;
@@ -5123,7 +5148,7 @@ JMP RETURN_DB2B					;and jump, instead of just, y'know... using RTS!?
 CODE_DB21:
 LDX Barrel_CurrentIndex				;
 
-LDA #$01					;defo start moving right
+LDA #Barrel_State_HorzMovement			;defo start moving right
 STA Barrel_State,X				;
 
 LDA #Barrel_GFXFrame_UpRight			;start with this frame
@@ -5132,10 +5157,13 @@ STA Barrel_GFXFrame,X				;
 RETURN_DB2B:
 RTS						;
 
-;horz barrel movement
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - ROLLS HORIZONTALLY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 CODE_DB2C:
-LDA #$FF					;move every frame... which makes this call redundant
-JSR CODE_DFE4					;
+LDA #%11111111					;move every frame... which makes this call redundant
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DB34					;
 RTS						;of course it moves every frame, making this unused. Hmm, an unused RTS, can't wait to document this on The Cutting Room Floor!
 
@@ -5163,7 +5191,7 @@ LDA $00						;
 JSR CODE_E05A					;1 - crossed lower into the platform
 STA Barrel_ShiftDownFlag			;
 
-JSR CODE_E048					;check Barrel_ShiftDownFlag and smth else
+JSR CODE_E048					;check shift flag and everything
 CLC						;check if shifted down
 ADC $01						;new Y-pos
 STA $01						;
@@ -5181,7 +5209,7 @@ LDA $00						;X-pos
 JSR CODE_E0AE					;check for ladder
 BEQ CODE_DBAC					;if no laddder, don't try to go down
 
-JSR CODE_EAF7					;get some value to compare with RNG value
+JSR GetCurrentDifficulty_EAF7			;get some value to compare with RNG value
 LDA DATA_C448,X					;which is all 88 btw
 AND RNG_Value+1					;
 BNE CODE_DBAC					;bits set, don't go down
@@ -5190,9 +5218,9 @@ LDX Barrel_CurrentIndex				;
 LDA Barrel_CurrentPlatformIndex,X		;
 TAX						;
 DEX						;
-LDA $7E,X					;idk what this is yet
+LDA EntitiesPerPlatform,X			;check if there are 4+ entities on the platform below
 CMP #$04					;
-BCS CODE_DBAC					;
+BCS CODE_DBAC					;if that's the case, it won't take the ladder (there's probably enough barrels and Jumpman, all sorts of unpleasantries)
 
 LDA Jumpman_State				;if player is climbing, always go down the ladder
 CMP #Jumpman_State_Climbing			;
@@ -5208,7 +5236,7 @@ CMP Jumpman_OAM_Y				;the barrel was higher, check again but lower
 BCS CODE_DBAC					;if the result is lower, don't go down
 
 CODE_DBA3:
-LDA #$02					;go down ladder i think
+LDA #Barrel_State_GoDownLadder			;roll down the ladder
 LDX Barrel_CurrentIndex				;
 STA Barrel_State,X				;
 DEC Barrel_CurrentPlatformIndex,X		;set to be on lower platform
@@ -5221,7 +5249,7 @@ BEQ CODE_DBB6					;not appraching an edge
 JMP CODE_DBE7					;yes drop
 
 CODE_DBB6:
-JSR CODE_DF40					;
+JSR CODE_DF40					;potentially escape Jumpman's hammer wrath
 
 LDX Barrel_CurrentIndex				;
 LDA Barrel_CurrentPlatformIndex,X		;yes, check the lowest platform
@@ -5285,7 +5313,7 @@ BEQ CODE_DC1B					;
 
 LDA Barrel_GFXFrame,X				;calculate the frame to DO A BARREL ROLL
 CLC						;
-ADC #$04                 
+ADC #$04					;
 CMP #Barrel_GFXFrame_UpLeft			;less than up-left?
 BCC CODE_DC16					;set up-left
 CMP #Barrel_GFXFrame_Vertical1			;if was bottom-left (with +4 that's Barrel_GFXFrame_Vertical1)
@@ -5314,9 +5342,13 @@ CODE_DC2D:
 STA Barrel_GFXFrame,X				;calculated graphics frame
 RTS						;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - MOVES DOWN THE LADDER
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 CODE_DC30:
-LDA #$55					;only update every other frame
-JSR CODE_DFE4					;
+LDA #%01010101					;only update every other frame
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BEQ RETURN_DC68					;return on odd frames
 
 JSR GetBarrelOAM_EFD5				;
@@ -5345,32 +5377,36 @@ JSR CODE_EADB					;redraw
 
 LDA $01						;check y-pos
 LDX Barrel_CurrentIndex				;
-CMP $A3,X					;some kinda y-pos to compare to (of the platform to get down to?)
+CMP Barrel_LadderYDestination,X			;did it reach the end of the ladder?
 BNE RETURN_DC68					;
 
 LDX Barrel_CurrentIndex				;
 
-LDA #$01					;moved down to the platform, now continue moving horizontally
+LDA #Barrel_State_HorzMovement			;moved down to the platform, now continue moving horizontally
 STA Barrel_State,X				;
-  
+
 RETURN_DC68:
 RTS						;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - FELL OFF (OFF THE PLATFORM)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 CODE_DC69:
-LDA #$FF					;
-JSR CODE_DFE4					;
+LDA #%11111111					;
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DC71					;always runs so this is pointless.
-RTS						;untriggered, duh
+RTS						;NOT EXECUTED, duh!
 
 CODE_DC71:
 JSR GetBarrelOAM_EFD5				;
 STX $04						;
 
-JSR EntityPosToScratch_EAEC
+JSR EntityPosToScratch_EAEC			;
 
-INC $01						;vertical move
+INC $01						;vertical move down 1 pixel
 
-LDA $01						;only move horizontally every other frame
+LDA $01						;only move horizontally every y-position increment (basically every other frame)
 AND #$01					;
 BEQ CODE_DC90					;
 
@@ -5384,7 +5420,7 @@ JMP CODE_DC90					;
 
 CODE_DC8E:
 INC $00						;move right
-  
+
 CODE_DC90:
 JSR CODE_DBEE					;animate
 
@@ -5400,42 +5436,46 @@ LDA $01						;check if landed on lower platform
 JSR CODE_E112					;
 BEQ RETURN_DCCF					;
 
-LDX Barrel_CurrentIndex
-LDA #$10					;landed bounce state
-STA Barrel_State,X
+LDX Barrel_CurrentIndex				;
+LDA #Barrel_State_LandedOnPlatform		;landed bounce state (by default it'll bounce slightly and move on)
+STA Barrel_State,X				;
 
-JSR CODE_E130					;
-BEQ CODE_DCBC					;
+JSR CODE_E130					;if barrel is above jumpman...
+BEQ CODE_DCBC					;check something else
 
-LDA RNG_Value+1					;
+LDA RNG_Value+1					;check RNG...
 AND #$01					;
-BEQ CODE_DCBC					;
+BEQ CODE_DCBC					;it's basically 50/50 between guaranteed offscreen exit and checking for all the entities, then considering taking it
 JMP CODE_DCC9					;
 
 CODE_DCBC:
 LDX Barrel_CurrentIndex				;
-LDA Barrel_CurrentPlatformIndex,X
-TAX                      
-DEX                      
-LDA $7E,X                
-CMP #$04                 
-BCS CODE_DCC9                
-RTS                      
+LDA Barrel_CurrentPlatformIndex,X		;
+TAX						;
+DEX						;
+LDA EntitiesPerPlatform,X			;are there 4 entities or more on the same platform?
+CMP #$04					;
+BCS CODE_DCC9					;it's too crowded
+RTS						;
 
 CODE_DCC9:
-LDX Barrel_CurrentIndex
+LDX Barrel_CurrentIndex				;
 
-LDA #$20
-STA Barrel_State,X
-  
+LDA #Barrel_State_GoOffscreen			;exit the stage
+STA Barrel_State,X				;
+
 RETURN_DCCF:
-RTS                      
+RTS						;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - BOUNCE FROM LANDING
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CODE_DCD0:
-LDA #$77					;
-JSR CODE_DFE4					;
+LDA #%01110111					;skip every 4th frame
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DCD8					;
-RTS						;skip every 4th frame
+RTS						;
 
 CODE_DCD8:
 JSR GetBarrelOAM_EFD5				;
@@ -5446,389 +5486,411 @@ JSR EntityPosToScratch_EAEC			;
 LDA $01						;
 JSR CODE_E016					;get which platform's on
 
-LDX Entity_TimingIndex
-STA Barrel_CurrentPlatformIndex,X
-AND #$01                 
-BNE CODE_DD00
+LDX Entity_TimingIndex				;
+STA Barrel_CurrentPlatformIndex,X		;
+AND #$01					;depending on the platform, it'll bounce to the right or to the left (where it should roll normally)
+BNE CODE_DD00					;
 
-INC $00
+INC $00						;roll right
 
-LDA $00                  
-LDX #$00
+LDA $00						;
+LDX #$00					;
 
 LOOP_DCF3:
-CMP DATA_C3FC,X              
-BEQ CODE_DD13                
-INX                      
-CPX #$0B                 
-BEQ CODE_DD25                
-JMP LOOP_DCF3
-  
+CMP DATA_C3FC,X					;depending on its x-position...
+BEQ CODE_DD13					;affect its y-position to simulate the bounce
+INX						;
+CPX #$0B					;
+BEQ CODE_DD25					;
+JMP LOOP_DCF3					;
+
 CODE_DD00:
-DEC $00                  
-LDA $00                  
-LDX #$00
+DEC $00						;roll left
+
+LDA $00						;
+LDX #$00					;
 
 LOOP_DD06:
-CMP DATA_C412,X              
-BEQ CODE_DD13                
-INX                      
-CPX #$0B                 
-BEQ CODE_DD25                
-JMP LOOP_DD06
-  
+CMP DATA_C412,X					;a different set of x-positions to check (bouncing to the left)
+BEQ CODE_DD13					;
+INX						;
+CPX #$0B					;
+BEQ CODE_DD25					;
+JMP LOOP_DD06					;
+
 CODE_DD13:
-LDA $01                  
-CLC                      
-ADC DATA_C407,X              
-STA $01                  
-CPX #$0A                 
-BNE CODE_DD25
+LDA $01						;
+CLC						;
+ADC DATA_C407,X					;
+STA $01						;change its y-position
+CPX #$0A					;
+BNE CODE_DD25					;check if done with this bounce motion thing, if not, don't snap out of it
 
-LDX $5D   
-LDA #$01
-STA $5E,X
-  
+LDX Barrel_CurrentIndex				;
+LDA #Barrel_State_HorzMovement			;become normal barrel being
+STA Barrel_State,X				;
+
 CODE_DD25:
-JSR CODE_DBEE
+JSR CODE_DBEE					;standard animation
 
-LDX $5D                  
-LDA $72,X                
-STA $02                  
-JSR CODE_EADB                
-RTS
+LDX Barrel_CurrentIndex				;
+LDA Barrel_GFXFrame,X				;
+STA $02						;
+JSR CODE_EADB					;update its gfx
+RTS						;
 
 CODE_DD32:
-LDA #$55				;move every other frame...
-JSR CODE_DFE4				;
-BNE CODE_DD3A				;
-RTS					;
+LDA #%01010101					;move every other frame...
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
+BNE CODE_DD3A					;
+RTS						;
 
 CODE_DD3A:
-JSR GetBarrelOAM_EFD5
-STX $04
+JSR GetBarrelOAM_EFD5				;
+STX $04						;
 
-JSR EntityPosToScratch_EAEC
+JSR EntityPosToScratch_EAEC			;
 
-LDA $01                  
-JSR CODE_E016
+LDA $01						;
+JSR CODE_E016					;grab the platform by its tail (err, I mean its value)
 
-LDX $5D                  
-STA $68,X                
-AND #$01                 
-BNE CODE_DD60                
-DEC $00
-    
-LDA $01                  
-CMP #$14                 
-BNE CODE_DD59
+LDX Barrel_CurrentIndex				;
+STA Barrel_CurrentPlatformIndex,X		;go offscreen left or right, depending on the platform
+AND #$01					;
+BNE CODE_DD60					;
 
-DEC $01						;untriggered
-  
+DEC $00						;go left
+
+LDA $01						;I guess this is supposed to fix its y-position?
+CMP #$14					;
+BNE CODE_DD59					;
+
+DEC $01						;untriggered (supposed to move the barrel up)
+
 CODE_DD59:
-LDA $00                  
-BNE CODE_DD73                
-JMP CODE_DD7F
-   
-CODE_DD60:
-INC $00                  
-LDA $01                  
-CMP #$EC                 
-BNE CODE_DD6A
+LDA $00						;check for left end of the screen
+BNE CODE_DD73					;
+JMP CODE_DD7F					;if it reached the screen boundary, should disappear
 
-DEC $01						;untriggered
+CODE_DD60:
+INC $00						;go right
+
+LDA $01						;another edge case, y-position where it shouldn't be
+CMP #$EC					;
+BNE CODE_DD6A					;rules are made to follow, so it does, in fact, not reach that
+
+DEC $01						;untriggered (again, move the barrel up)
 
 CODE_DD6A:
-LDA $00                  
-CMP #$F4                 
-BNE CODE_DD73                
-JMP CODE_DD7F
+LDA $00						;
+CMP #$F4					;check if reached the right end of the screen
+BNE CODE_DD73					;
+JMP CODE_DD7F					;disappear
 
 CODE_DD73:
-JSR CODE_DBEE
-LDX $5D                  
-LDA $72,X                
-STA $02                  
-JMP CODE_EADB
+JSR CODE_DBEE					;animation is hard
+
+LDX Barrel_CurrentIndex				;
+LDA Barrel_GFXFrame,X				;
+STA $02						;
+JMP CODE_EADB					;surprised its a JMP this time instead of JSR : RTS
 
 CODE_DD7F:
-LDA #$22                 
-JSR CODE_F092
-  
-LDA #$00                 
-LDX $5D                  
-STA $68,X                
-RTS
+LDA #$22					;remove barrel from the face of this earth
+JSR CODE_F092					;
+
+LDA #$00					;
+LDX Barrel_CurrentIndex				;
+STA Barrel_CurrentPlatformIndex,X		;clear its platform position
+RTS						;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - TOSSED DOWN (3 SEPARATE STATES IN ONE)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CODE_DD8B:
-STA $07
+STA $07						;saves Barrel_VertTossPattern,x
 
-LDX $5D                  
-LDA $5E,X                
-CMP #$C2                 
-BNE CODE_DD98
-JMP CODE_DE82
+LDX Barrel_CurrentIndex				;
+LDA Barrel_State,X				;
+CMP #Barrel_State_HorzMovementAfterVertToss	;is it becoming normal horizontal moving barrel?
+BNE CODE_DD98					;
+JMP CODE_DE82					;well, good.
 
-CODE_DD98:  
-CMP #$C1                 
-BEQ CODE_DDD7
-  
-LDA $07                  
-CMP #$02                 
-BEQ CODE_DDAB                
-CMP #$03                 
-BEQ CODE_DDB0
+CODE_DD98:
+CMP #Barrel_State_VertMovementBounce		;is it bouncing off the platform?
+BEQ CODE_DDD7					;
 
-LDA #$34                 
-JMP CODE_DDB2
-  
+;STATE Barrel_State_VertMovement
+LDA $07						;
+CMP #Barrel_VertTossPattern_DiagonalRight	;UNUSED PATTERN!!!
+BEQ CODE_DDAB					;
+CMP #Barrel_VertTossPattern_LeftAndRight	;
+BEQ CODE_DDB0					;
+
+LDA #$34					;y-positions to check for straight vertical pattern
+JMP CODE_DDB2					;
+
 CODE_DDAB:
-LDA #$36					;\unused?    
-JMP CODE_DDB2					;/
+LDA #$36					;normally unused
+JMP CODE_DDB2					;y-positions to check for this unused diagonal pattern
 
 CODE_DDB0:
-LDA #$38
-  
+LDA #$38					;y-positions to check for left and right wave pattern
+
 CODE_DDB2:
-JSR CODE_C853
+JSR CODE_C853					;get the pointer to these values
 
-JSR GetBarrelOAM_EFD5
-STX $04
+JSR GetBarrelOAM_EFD5				;
+STX $04						;
 
-LDA $0200,X              
-JSR CODE_E112
+LDA OAM_Y,X					;
+JSR CODE_E112					;check if the barrel hit any platforms lately
 
-LDY $0A                  
-CPY #$04                 
-BNE CODE_DDC9                
-JMP CODE_DE73
-  
+LDY $0A						;last platform?
+CPY #$04					;
+BNE CODE_DDC9					;
+JMP CODE_DE73					;landed on the last platform, will become normal soon
+
 CODE_DDC9:
-CMP #$00                 
-BEQ CODE_DDD7
+CMP #$00					;did it land?
+BEQ CODE_DDD7					;if not, well...
 
-LDX $5D                  
-LDA #$01                 
-STA $8A,X
-   
-LDA #$C1                 
-STA $5E,X                
- 
+LDX Barrel_CurrentIndex				;
+LDA #$01					;
+STA Entity_TimingCounter,X			;
+
+LDA #Barrel_State_VertMovementBounce		;...but if it did, it bounced on a platform (moving down)
+STA Barrel_State,X				;
+
+;STATE Barrel_State_VertMovementBounce (also executed when in state Barrel_State_VertMovement as well)
 CODE_DDD7:
-JSR GetBarrelOAM_EFD5
+JSR GetBarrelOAM_EFD5				;
+STX $04						;
 
-STX $04                  
-LDX $5D                  
-LDA $5E,X                
-CMP #$C1                 
-BNE CODE_DE13
+LDX Barrel_CurrentIndex				;
+LDA Barrel_State,X				;
+CMP #Barrel_State_VertMovementBounce		;
+BNE CODE_DE13					;bounce or no
 
-LDA #$20
-JSR CODE_DFE4                
-BNE CODE_DDF5
+LDA #%00100000					;runs after 8 frames (together would be 0010000000100000, which means first run it'll activate on 6th frame, then it'll become consistent every 8th frame after)
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
+BNE CODE_DDF5					;(actually, it'll SKIP every 8 frames?)
 
-LDX $04                  
-LDA $0200,X              
-STA $01                  
-JMP CODE_DE27
+LDX $04						;
+LDA OAM_Y,X					;
+STA $01						;
+JMP CODE_DE27					;
 
-CODE_DDF5:  
-LDX $5D                  
-LDA #$C0                 
-STA $5E,X
-  
-LDA $07                  
-CMP #$03                 
-BNE CODE_DE10
+CODE_DDF5:
+LDX Barrel_CurrentIndex				;
+LDA #Barrel_State_VertMovement			;
+STA Barrel_State,X				;resume being tossed down
 
-LDA $0417,X              
-BEQ CODE_DE0B
- 
-LDA #$00                 
-JMP CODE_DE0D
+LDA $07						;
+CMP #Barrel_VertTossPattern_LeftAndRight	;
+BNE CODE_DE10					;only left/right pattern can change horizontal direction
 
-CODE_DE0B:  
-LDA #$01
+LDA Barrel_VertTossHorzMovementDir,X		;change its movement direction (Nintendo hasn't learned about EOR yet... OH WAIT, MY BAD, THEY USED EOR BEFORE)
+BEQ CODE_DE0B					;
+
+LDA #$00					;move 
+JMP CODE_DE0D					;
+
+CODE_DE0B:
+LDA #$01					;
 
 CODE_DE0D  
-STA $0417,X
-  
+STA Barrel_VertTossHorzMovementDir,X		;
+
 CODE_DE10:
-JMP CODE_DE1A
+JMP CODE_DE1A					;
 
 CODE_DE13:
-LDA #$FF                 
-JSR CODE_DFE4                
-BEQ RETURN_DE85
+LDA #%11111111					;move every frame (pointless)
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
+BEQ RETURN_DE85					;
 
-CODE_DE1A:  
-LDX $04                  
-LDA #$01                 
-CLC                      
-ADC $0200,X              
-STA $01                  
-JSR CODE_DE86
- 
+CODE_DE1A:
+LDX $04						;
+LDA #$01					;
+CLC						;move down 1 px
+ADC OAM_Y,X					;
+STA $01						;
+
+JSR CODE_DE86					;more down movement..........
+
+;handle barrel's left and right motion (if applicable)
 CODE_DE27:
-INX                      
-INX                      
-INX                      
-LDA $07                  
-CMP #$02                 
-BNE CODE_DE36
-INC $0200,X					;\untriggered
+INX						;this is not necessary if you could just, y'know... load OAM_X directly???
+INX						;
+INX						;(I made it so it's OAM_X but also added -3, to make the code clearer that we're modifying x-pos here, while preserving the original address)
+
+LDA $07						;unused barrel pattern?
+CMP #$02					;
+BNE CODE_DE36					;
+
+INC OAM_X-3,X					;\untriggered (move to the right 1 pixel)
 JMP CODE_DE56					;/
 
 CODE_DE36:
-CMP #$03                 
-BNE CODE_DE56
+CMP #$03					;move left AND right
+BNE CODE_DE56					;
 
-LDA $01                  
-AND #$01                 
-BEQ CODE_DE56
+LDA $01						;every other y-pos pixel...
+AND #$01					;
+BEQ CODE_DE56					;
 
-LDY $5D                  
-LDA $0417,Y              
-BNE CODE_DE50                
-INC $0200,X              
-INC $0200,X              
-JMP CODE_DE56
-  
+LDY Barrel_CurrentIndex				;
+LDA Barrel_VertTossHorzMovementDir,Y		;move in this direction
+BNE CODE_DE50					;
+
+INC OAM_X-3,X					;moves right two pixels
+INC OAM_X-3,X					;
+JMP CODE_DE56					;
+
 CODE_DE50:
-DEC $0200,X              
-DEC $0200,X
-  
+DEC OAM_X-3,X					;moves left two pixies (this is intentional. that's what I call a haha funny joke)
+DEC OAM_X-3,X					;
+
 CODE_DE56:
-LDA $0200,X              
-STA $00
+LDA OAM_X-3,X					;
+STA $00						;final x-pos
 
-LDX $5D                  
-LDA $72,X                
-CMP #$90                 
-BNE CODE_DE68
+LDX Barrel_CurrentIndex				;
+LDA Barrel_GFXFrame,X				;animate the barrel and its silly vertical movement
+CMP #Barrel_GFXFrame_Vertical1			;
+BNE CODE_DE68					;
 
-LDA #$94                 
-JMP CODE_DE6A
-  
+LDA #Barrel_GFXFrame_Vertical2			;
+JMP CODE_DE6A					;
+
 CODE_DE68:
-LDA #$90
-  
+LDA #Barrel_GFXFrame_Vertical1			;
+
 CODE_DE6A:
-STA $02
-  
-LDX $5D                  
-STA $72,X                
-JMP CODE_EADB
- 
+STA $02						;
+
+LDX Barrel_CurrentIndex				;
+STA Barrel_GFXFrame,X				;resulting frame
+JMP CODE_EADB					;update gfx (GraFiX)
+
 CODE_DE73:
-LDA #$C2                 
-LDX $5D                  
-STA $5E,X
- 
-LDX $04                  
-LDA $0203,X
-STA $042B                
-RTS  
+LDA #Barrel_State_HorzMovementAfterVertToss	;landed on the last platform, will turn into normal soon enough
+LDX Barrel_CurrentIndex				;
+STA Barrel_State,X				;
 
+LDX $04						;
+LDA OAM_X,X					;
+STA Barrel_VertTossLandingXPos			;landed at this pos
+RTS						;
+
+;STATE Barrel_State_HorzMovementAfterVertToss
 CODE_DE82:
-JSR CODE_DEA5
+JSR CODE_DEA5					;move horizontally BUT WITH CHECKS!!
 
-RETURN_DE85:   
-RTS
+RETURN_DE85:
+RTS						;
 
+;accelerate down at certain points (likely after it bounced off the platform (only if it's moving straight down without left/right movement)
 CODE_DE86:
-LDA $07                  
-CMP #$01                 
-BNE RETURN_DEA4
- 
-LDY #$00                 
-LDA $01
+LDA $07						;left/right movement?
+CMP #$01					;if so, don't care
+BNE RETURN_DEA4					;
+
+LDY #$00					;
+LDA $01						;y-pos check
 
 LOOP_DE90:
-CMP DATA_C41D,Y              
-BCC CODE_DE9F                
-CMP DATA_C420,Y              
-BCS CODE_DE9F
+CMP DATA_C41D,Y					;
+BCC CODE_DE9F					;lower than this position...
+CMP DATA_C420,Y					;
+BCS CODE_DE9F					;
 
-INC $01                  
-JMP RETURN_DEA4
+INC $01						;
+JMP RETURN_DEA4					;not enough RTS
 
 CODE_DE9F:
-INY                      
-CPY #$03                 
-BNE LOOP_DE90
-  
+INY						;next pair of y-positions to check
+CPY #$03					;
+BNE LOOP_DE90					;
+
 RETURN_DEA4:
-RTS                      
+RTS						;
 
 CODE_DEA5:
-JSR GetBarrelOAM_EFD5
-STX $04
+JSR GetBarrelOAM_EFD5				;
+STX $04						;
 
-JSR EntityPosToScratch_EAEC
-DEC $00
+JSR EntityPosToScratch_EAEC			;
+DEC $00						;moves to the left
 
-LDA $042B                
-SEC                      
-SBC #$01                 
-CMP $00                  
-BEQ CODE_DEE8                
-SEC                      
-SBC #$01                 
-CMP $00                  
-BEQ CODE_DEE8                
-SEC                      
-SBC #$01                 
-CMP $00                  
-BEQ CODE_DEF2                
-SEC                      
-SBC #$08                
-CMP $00                  
-BEQ CODE_DEED
-SEC                      
-SBC #$01                 
-CMP $00                  
-BEQ CODE_DEED                
-SEC                      
-SBC #$01                 
-CMP $00                  
-BNE CODE_DEFB
+;various checks, depending on how far it has gone from its landing position.
+LDA Barrel_VertTossLandingXPos			;
+SEC						;
+SBC #$01					;
+CMP $00						;if moved one pixel...
+BEQ CODE_DEE8					;adjust its y-position (move up)
+SEC						;
+SBC #$01					;
+CMP $00						;if moved two pixels...
+BEQ CODE_DEE8					;MORE Y-POS ADJUSTIN (UP)
+SEC						;
+SBC #$01					;
+CMP $00						;if moved 3 pixels...
+BEQ CODE_DEF2					;check if it should turn into a normal barrel, depending on wether it was a simple straight moving barrel, or a left & right one
+SEC						;
+SBC #$08					;
+CMP $00						;if moved 11 pixels...
+BEQ CODE_DEED					;adjust y-pos, but this time it moves down (this simulates a standard bounce off the platform thing
+SEC						;
+SBC #$01					;
+CMP $00						;if moved 12 pixels..
+BEQ CODE_DEED					;adjust y-pos yet again, down
+SEC						;
+SBC #$01					;
+CMP $00						;if moved 13 pixels...
+BNE CODE_DEFB					;just display graphics, it'll turn into a normal barrel next time
 
 CODE_DEDC:
-LDA #$01                 
-LDX $5D                  
-STA $5E,X
+LDA #Barrel_State_HorzMovement			;normal horizontal moving barrel
+LDX Barrel_CurrentIndex				;
+STA Barrel_State,X				;
 
-LDA #$00                 
-STA $0417,X              
-RTS                      
+LDA #$00					;clear this [redacted]
+STA Barrel_VertTossHorzMovementDir,X		;
+RTS						;
 
 CODE_DEE8:
-DEC $01
-JMP CODE_DEFB
+DEC $01						;move up
+JMP CODE_DEFB					;
 
-CODE_DEED:  
-INC $01                  
-JMP CODE_DEFB    
+CODE_DEED:
+INC $01						;move down
+JMP CODE_DEFB					;
 
 CODE_DEF2:
-LDX $5D                  
-LDA $0421,X              
-CMP #$01                 
-BEQ CODE_DEDC
+LDX Barrel_CurrentIndex				;
+LDA Barrel_VertTossPattern,X			;normal vertical moving barrel?
+CMP #$01					;
+BEQ CODE_DEDC					;
 
-CODE_DEFB:  
-LDA #$84                 
-LDX $5D                  
-STA $72,X                
-STA $02
-  
-JSR CODE_EADB                
-RTS   
+CODE_DEFB:
+LDA #Barrel_GFXFrame_UpRight			;display horizontal gfx
+LDX Barrel_CurrentIndex				;
+STA Barrel_GFXFrame,X				;
+STA $02						;
+
+JSR CODE_EADB					;update barrel gfx and pos and everything
+RTS						;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - MOVES DOWN FROM HAMMER JUMPSCARE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CODE_DF07:
-LDA #$55					;move every other frame
-JSR CODE_DFE4					;
+LDA #%01010101					;move every other frame
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DF0F					;
 RTS						;
 
@@ -5836,7 +5898,7 @@ CODE_DF0F:
 JSR GetBarrelOAM_EFD5				;
 STX $04						;
 
-JSR EntityPosToScratch_EAEC
+JSR EntityPosToScratch_EAEC			;
 
 INC $01						;down 1px
 
@@ -5844,139 +5906,140 @@ LDA OAM_Tile,X					;animate
 CMP #Barrel_GFXFrame_Vertical1			;
 BEQ CODE_DF25					;
 
-LDA #Barrel_GFXFrame_Vertical1
-JMP CODE_DF27
-  
+LDA #Barrel_GFXFrame_Vertical1			;
+JMP CODE_DF27					;
+
 CODE_DF25:
-LDA #Barrel_GFXFrame_Vertical2
-  
+LDA #Barrel_GFXFrame_Vertical2			;
+
 CODE_DF27:
-STA $02
+STA $02						;correct gfx
 
 JSR CODE_EADB					;refresh barrel image
 
-LDA $C0						;checks for the Y-position
+LDA Barrel_EscapeYDestination			;check if it has reached the lower platform
 CMP $01						;
-BEQ CODE_DF35					;if equal
-BCC CODE_DF35					;or less, become normal
+BEQ CODE_DF35					;whew, safe from that maniac
+BCC CODE_DF35					;become normal
 RTS						;
 
 CODE_DF35:
 LDX Barrel_CurrentIndex				;
 
-LDA #$01					;horizontal state
+LDA #Barrel_State_HorzMovement			;horizontal state
 STA Barrel_State,X				;
 
-LDA #$00					;set this curious RAM address to 0
-STA $C0						;
+LDA #$00					;clear this, potentially for the next escape
+STA Barrel_EscapeYDestination			;
 RTS						;
 
+;make a barrel potentially panic!
 CODE_DF40:
-LDA $C0                  
-BEQ CODE_DF45                
-RTS                      
+LDA Barrel_EscapeYDestination			;only one barrel can "panic escape" at once
+BEQ CODE_DF45					;
+RTS						;
 
 CODE_DF45:
 LDA Jumpman_State				;if Jumpman has a hammer...
 CMP #Jumpman_State_Hammer			;
-BEQ CODE_DF4C					;
+BEQ CODE_DF4C					;lets see if one of the barrels can escape his wrath
 RTS						;
 
 CODE_DF4C:
-LDA Jumpman_CurrentPlatformIndex		;something on specific platform...
-CMP #$03
-BEQ CODE_DF55                
-JMP CODE_DF72
+LDA Jumpman_CurrentPlatformIndex		;this platform
+CMP #$03					;
+BEQ CODE_DF55					;
+JMP CODE_DF72					;(otherwise on the 5th platform
 
 CODE_DF55:
-LDX #$03                 
-LDA $7E,X                
-CMP #$05                 
-BCS CODE_DF5E                
-RTS
+LDX #$03					;check if there are 5 entities on platform 3 (Jumpman+Hammer is already 2, so we need three barrels)
+LDA EntitiesPerPlatform,X			;
+CMP #$05					;
+BCS CODE_DF5E					;one of the barrels will escape!
+RTS						;
 
 CODE_DF5E:
-LDX #$00
+LDX #$00					;loopdydoo
 
 LOOP_DF60: 
-LDA $5E,X                
-CMP #$01                 
-BNE CODE_DF6C
+LDA Barrel_State,X				;is moving horizontally?
+CMP #Barrel_State_HorzMovement			;
+BNE CODE_DF6C					;
 
-LDA $68,X                
-CMP #$03                 
-BEQ CODE_DF8F
-  
+LDA Barrel_CurrentPlatformIndex,X		;is on the same platform as the player?
+CMP #$03					;
+BEQ CODE_DF8F					;
+
 CODE_DF6C:
-INX                      
-CPX #$0A                 
-BNE LOOP_DF60       
-RTS                      
+INX						;
+CPX #$0A					;
+BNE LOOP_DF60					;loop through all barrels
+RTS						;
 
 CODE_DF72:
-LDX #$05
-LDA $7E,X
-CMP #$05
-BCS CODE_DF7B
-RTS
+LDX #$05					;check entities on platform 5 (again, jumpman+hammer is already 2, if there are three barrels on the same platform, this check will succeed)
+LDA EntitiesPerPlatform,X			;
+CMP #$05					;
+BCS CODE_DF7B					;:AAAA:
+RTS						;
 
 CODE_DF7B:
-LDX #$00
+LDX #$00					;
 
-LOOP_DF7D: 
-LDA $5E,X                
-CMP #$01                 
-BNE CODE_DF89
+LOOP_DF7D:
+LDA Barrel_State,X				;moving horizontally?
+CMP #Barrel_State_HorzMovement			;
+BNE CODE_DF89					;if not, next barrel
 
-LDA $68,X                
-CMP #$05                 
-BEQ CODE_DF8F
-  
+LDA Barrel_CurrentPlatformIndex,X		;should be the same platform as the player (assuming the hammer hasn't been moved or smth)
+CMP #$05					;
+BEQ CODE_DF8F					;nope outta there
+
 CODE_DF89:
-INX                      
-CMP #$0A                 
-BNE LOOP_DF7D          
-RTS                      
+INX						;loop through barrels again
+CMP #$0A					;
+BNE LOOP_DF7D					;
+RTS						;
 
-CODE_DF8F:  
-LDA #$40                 
-STA $5E,X
+CODE_DF8F:
+LDA #Barrel_State_GoDownPanic			;EMERGENCY!!!
+STA Barrel_State,X				;
 
-DEC $68,X                
-TXA                      
-CLC                      
-ADC #$03                 
-ASL A                    
-ASL A                    
-ASL A                    
-ASL A                    
-TAY                      
-LDA $0200,Y              
-STA $01
+DEC Barrel_CurrentPlatformIndex,X		;moves down a platform
+TXA						;
+CLC						;
+ADC #$03					;
+ASL A						;
+ASL A						;
+ASL A						;
+ASL A						;
+TAY						;calculate barrel's OAM slot
+LDA OAM_Y,Y					;
+STA $01						;the usual x/y stuff
 
-LDA $0203,Y              
-STA $00
+LDA OAM_X,Y					;
+STA $00						;
 
-LDA DATA_C1EB                
-LDY #$00
+LDA DATA_C1EB					;loading a constant table value instead of the constant...
+LDY #$00					;
 
 LOOP_DFAD:
-CMP $00                  
-BCS CODE_DFB8                
-CLC                      
-ADC #$18                 
-INY                      
-JMP LOOP_DFAD
-  
+CMP $00						;if its x-pos is...
+BCS CODE_DFB8					;at or to the right of the x-position we're comparing to
+CLC						;
+ADC #$18					;even right-er (every 3 8x8 tiles)
+INY						;(basically gets an elevation for each one of the platform shifts... identations, or whatever I feel like calling them)
+JMP LOOP_DFAD					;
+
 CODE_DFB8:
-TYA                      
-ASL A                    
-CLC                      
-ADC #$15                 
-CLC                      
-ADC $01                  
-STA $C0                  
-RTS                      
+TYA						;
+ASL A						;
+CLC						;
+ADC #$15					;moves at least 21 pixels down
+CLC						;
+ADC $01						;and barrel's y-pos
+STA Barrel_EscapeYDestination			;move down to this position
+RTS						;
 
 ;hide barrel behind BG if low enough (so it goes behind the oil barrel)
 CODE_DFC3:
@@ -6001,24 +6064,24 @@ RETURN_DFE3:
 RTS						;
 
 ;store the same value for both $0A and $0B (because of set bit positioning)
-CODE_DFE4:
+PlatformAndBarrelTiming_BothBytes_DFE4:
 STA $0A						;
-STA $0B						;
+STA $0B						;same bit configuration
 
 ;used for platforms and barrels
-;uses bitwise check for which frame to update the platforms on.
+;uses bitwise check for which frame to update the platforms/barrels on.
 ;input:
 ;$0A - timing for the first 8 bits
 ;$0B - timing for the last 8 bits
 ;Example of how it works:
-;$0A = $88 - %10001000
-;$0B = $88 - %10001000
+;$0A = #$88 - %10001000
+;$0B = #$88 - %10001000
 ;Entity_TimingCounter = 0 - checks bit 0 of $0A - don't run the routine
 ;Entity_TimingCounter = 8 - checks bit 0 of $0B - don't run the routine
 ;Entity_TimingCounter = 3 - checks bit 3 of $0A - run the routine
 ;and so on
 
-CODE_DFE8:
+PlatformAndBarrelTiming_DFE8:
 LDX Entity_TimingIndex				;
 INC Entity_TimingCounter,X			;
 
@@ -6072,7 +6135,7 @@ RTS						;
 ;GetCurrentPlatform_E016
 CODE_E016:
 STA $0A						;
-   
+
 LDA PhaseNo					;get Y-positions for platforms depending on phase
 SEC						;
 SBC #$01					;
@@ -6080,9 +6143,9 @@ ASL A						;
 TAX						;
 LDA DATA_C493,X					;
 STA $08						;
-  
+
 LDA DATA_C493+1,X				;
-STA $09
+STA $09						;
 
 LDY #$00					;
 LDA #$01					;platform index = 1 by default
@@ -6099,21 +6162,21 @@ INC $0B						;
 INY						;
 JMP LOOP_E02F					;
 
-CODE_E041:  
+CODE_E041:
 LDA #$07					;if encountered FF command, set highest (or lowest? platform)
 STA $0B						;
-  
+
 CODE_E045:
 LDA $0B						;
 RTS						;
 
 CODE_E048:
-LDX $5D                  
-LDA $5E,X                
-CMP #$01                 
+LDX Barrel_CurrentIndex				;check if it's BARREL ROLLing like normal
+LDA Barrel_State,X				;
+CMP #Barrel_State_HorzMovement			;
 BNE ReturnA_E053+ReturnABranchDist		;CODE_E057
 
-LDA $7D						;
+LDA Barrel_ShiftDownFlag			;check if it changed elevation
 BNE ReturnA_E053+ReturnABranchDist		;CODE_E057
 
 ;Load #$01
@@ -6123,43 +6186,43 @@ Macro_ReturnA $0C,$01				;more optimizations between revisions. now 0C isn't use
 ;used by barrels
 CODE_E05A:
 STA $0C						;temporary store X-pos
-  
-LDX $5D						;
+
+LDX Barrel_CurrentIndex				;
 LDA Barrel_CurrentPlatformIndex,X		;get height
 CMP #$01					;bottom platform?
 BEQ CODE_E079					;
 CMP #$06					;top platform?
 BEQ CODE_E079					;
 
-LDX #$00
+LDX #$00					;
 
 LOOP_E06A:
-LDA DATA_C1C4,X              
-CMP $0C                  
-BEQ CODE_E08A
-INX
-CPX #$09                 
-BEQ CODE_E08A+ReturnABranchDist      
-JMP LOOP_E06A
-  
+LDA DATA_C1C4,X					;check if at this x-position
+CMP $0C						;
+BEQ CODE_E08A					;if so, it changed its elevation
+INX						;
+CPX #$09					;
+BEQ CODE_E08A+ReturnABranchDist			;
+JMP LOOP_E06A					;next x-pos to check
+
 CODE_E079:
-LDX #$04
+LDX #$04					;
 
 LOOP_E07B:
-LDA DATA_C1C4,X              
-CMP $0C
-BEQ CODE_E08A                
-INX                      
-CPX #$09                 
-BEQ CODE_E08A+ReturnABranchDist
-JMP LOOP_E07B
+LDA DATA_C1C4,X					;check if at THIS x-position
+CMP $0C						;
+BEQ CODE_E08A					;yass!
+INX						;
+CPX #$09					;
+BEQ CODE_E08A+ReturnABranchDist			;
+JMP LOOP_E07B					;
 
 CODE_E08A:
-Macro_ReturnA $0B,$00				;yet another "don't have to store to RAM just return" change
+Macro_ReturnA $0B,$00				;yet another "don't have to store to RAM, just return" change
 
 ;check if approaching a ledge to drop from
 CODE_E090:
-STA $0C
+STA $0C						;
 
 LDX Barrel_CurrentIndex
 LDA Barrel_CurrentPlatformIndex,X		;
@@ -6168,10 +6231,10 @@ BEQ CODE_E09F					;
 
 LDX #$00					;to the right
 JMP CODE_E0A1					;
-  
+
 CODE_E09F:
 LDX #$01					;edge to the left
-  
+
 CODE_E0A1:
 LDA DATA_C1CD,X					;if moving towards an edge
 CMP $0C						;
@@ -6180,114 +6243,116 @@ BEQ ReturnA_E0A8+ReturnABranchDist		;(CODE_E0AB) drop off.
 ReturnA_E0A8:
 Macro_ReturnA $0B,$00
 
-;Checks for ladders! if it should go down (maybe also checks for points where it can fall down the platform)
+;Checks for ladders! if it should go down
 CODE_E0AE:
 STA $0C						;save X-pos
 
 LDX Barrel_CurrentIndex				;
 LDA Barrel_CurrentPlatformIndex,X		;check which platform it's on
-CMP #$02					;second to last (lowest) platform
-BEQ CODE_E0CB					;
-CMP #$03					;3rd lowest...
-BEQ CODE_E0CB					;
-CMP #$04					;and so on
-BEQ CODE_E0D1					;
+CMP #$02					;second platform (from the bottom) 
+BEQ CODE_E0CB					;(THEY COULDVE USED CODE_E0E9 instead of CODE_E0CB, it's basically the same!)
+CMP #$03					;3rd platform
+BEQ CODE_E0CB					;both have only two ladders
+CMP #$04					;
+BEQ CODE_E0D1					;3 ladders!
 CMP #$05					;
-BEQ CODE_E0DD					;
+BEQ CODE_E0DD					;also 3
 CMP #$06					;highest platform
 BEQ CODE_E0E9					;
 JMP CODE_E0EC					;lowest platform (no ladders)
- 
+
 CODE_E0CB:
-JSR CODE_E0F1                
-JMP CODE_E0EC
-  
+JSR CODE_E0F1					;check a pair of ladders
+JMP CODE_E0EC					;c'mon, it's the same as CODE_E0E9 basically (marking that no ladder has been encountered)
+
 CODE_E0D1:
-JSR CODE_E0F1
+JSR CODE_E0F1					;check for one of the normal barrels
 
-;if not terminated by PLAs, means the barrel isn't at an X-pos where the ladder can be.
-LDY #$89
-CMP #$C4					;check if very far to the right
-BEQ CODE_E109					;can disappear, maybe?
+LDY #$89					;if not terminated by PLAs, means the barrel isn't at an X-pos where the ladder can be.
+CMP #$C4					;check the ladder position on the very right
+BEQ CODE_E109					;
 JMP CODE_E0EC					;not on the ladder is all that's clear
-  
-CODE_E0DD:           
-JSR CODE_E0F1
 
-LDY #$71                 
-CMP #$B4					;check position where the barrel can fall down off the ledge (i think?)
-BEQ CODE_E109                
-JMP CODE_E0EC
+CODE_E0DD:
+JSR CODE_E0F1					;
 
-CODE_E0E9:  
-JSR CODE_E0F1
- 
+LDY #$71					;check third ladder on platform 5 (the broken one)
+CMP #$B4					;
+BEQ CODE_E109					;encountered ladder - MOVE IT, MOVE IT, I LIKE TO
+JMP CODE_E0EC					;
+
+CODE_E0E9:
+JSR CODE_E0F1					;if this terminated, that means we found a ladder
+
 CODE_E0EC:
-LDA #$00                 
-JMP CODE_E10F
+LDA #$00					;No Ladder
+JMP CODE_E10F					;
 
 CODE_E0F1:
-TAX                      
-DEX                      
-DEX                      
-LDA $0C						;check X-pos
-LDY DATA_C172,X
-CMP DATA_C177,X              
-BEQ CODE_E107
+TAX						;get an index for the ladders
+DEX						;
+DEX						;counting from platform 2 (since first one doesn't have ladders, and 0 is invalid)
 
-LDY DATA_C17C,X					;two different ladder positions?
-CMP DATA_C181,X              
-BEQ CODE_E107                
-RTS
+LDA $0C						;check X-pos for one of the ladders
+LDY DATA_C172,X					;y-destination for the end of this ladder
+CMP DATA_C177,X					;
+BEQ CODE_E107					;if at this pos, yes! we just hit the ladder, moving down...
+
+LDY DATA_C17C,X					;a second ladder to check
+CMP DATA_C181,X					;
+BEQ CODE_E107					;
+RTS						;
 
 CODE_E107:
-PLA						;terminate further barrel processing
+PLA						;terminate further ladder checks
 PLA						;
 
 CODE_E109:
-LDX $5D
-STY $A3,X
- 
+LDX Barrel_CurrentIndex				;
+STY Barrel_LadderYDestination,X			;must reach this destination
+
 LDA #$01					;
-  
+
 CODE_E10F:
 STA $0C						;output A - 0 = no ladder, 1 - yes ladder
 RTS						;
 
+;used by barrels to decide if they hit certain y-position (usually for landing on a platform)
 CODE_E112:
-STA $0B
-  
-LDY #$00
+STA $0B						;saves Y-position
+
+LDY #$00					;
 
 LOOP_E116:
-LDA ($08),Y              
-CMP #$FE                 
-BEQ CODE_E129                
-CMP $0B
-BEQ CODE_E124                
-INY                      
-JMP LOOP_E116
-  
-CODE_E124:
-LDA #$01                 
-JMP CODE_E12B
-  
-CODE_E129:
-LDA #$00
-  
-CODE_E12B:
-STA $0C                  
-STY $0A                  
-RTS
+LDA ($08),Y					;table terminator
+CMP #$FE					;
+BEQ CODE_E129					;
+CMP $0B						;
+BEQ CODE_E124					;see if the y-pos matches
+INY						;next y-pos to check
+JMP LOOP_E116					;
 
-CODE_E130:  
-LDX $5D                  
-LDA Barrel_CurrentPlatformIndex,X                
-SEC                      
-SBC $59                  
-BEQ CODE_E13E                
-BMI CODE_E13E
-JMP CODE_E13E+ReturnABranchDist
+CODE_E124:
+LDA #$01					;
+JMP CODE_E12B					;
+
+CODE_E129:
+LDA #$00					;
+
+CODE_E12B:
+STA $0C						;1 - did hit one of the y-positions, 0 - didn't
+STY $0A						;save which platform we hit
+RTS						;
+
+;check platform distance between the barrel and Jumpman (0 - barrel is above jumpman, 1 - same platform or below jumpman)
+CODE_E130:
+LDX Barrel_CurrentIndex				;
+LDA Barrel_CurrentPlatformIndex,X		;barrel's platform value
+SEC						;
+SBC Jumpman_CurrentPlatformIndex		;minus Jumpman's
+BEQ CODE_E13E					;they're on the same platform?
+BMI CODE_E13E					;jumpman is above the barrel?
+JMP CODE_E13E+ReturnABranchDist			;it's none of the above, it's barrel is above jumpman
 
 CODE_E13E:
 Macro_ReturnA $0B,$01
@@ -6295,83 +6360,84 @@ Macro_ReturnA $0B,$01
 ;----------------------------------------------
 ;!UNUSED
 ;Inaccessible block of code.
-;purpose unknown.
+;supposedly for barrels, used to calculate their platform index
+;probably supposed to be called alongside CODE_E166 before running through barrels
 
 UNUSED_E144:
-LDX #$00                 
-LDY #$20
+LDX #$00					;
+LDY #8*4					;this must be barrel-related... except the initial OAM slot is different (it's occupied by the second flame enemy in the finished game)
 
 LOOP_E148:
-LDA $0200,Y
-CMP #$FF                 
-BEQ CODE_E157
+LDA OAM_Y,Y					;
+CMP #$FF					;
+BEQ CODE_E157					;
 
-JSR CODE_E016                
-STA $68,X                
-JMP CODE_E15B
+JSR CODE_E016					;see what platform it's on
+STA Barrel_CurrentPlatformIndex,X		;
+JMP CODE_E15B					;
 
 CODE_E157:
-LDA #$00                 
-STA $68,X
+LDA #$00					;if it's not on-screen, it's on no platform
+STA Barrel_CurrentPlatformIndex,X		;
 
 CODE_E15B:
-TYA                      
-CLC                      
-ADC #$10                 
-TAY                      
-INX                      
-CPX #$0A                 
-BNE LOOP_E148                
-RTS
+TYA						;
+CLC						;
+ADC #$10					;
+TAY						;
+INX						;
+CPX #$0A					;
+BNE LOOP_E148					;that's a lotta barrels.
+RTS						;
 
 ;----------------------------------------------
 
-;i think this is a routine for phase 1 to check barrels and run their code (not really)
 CODE_E166:
-LDA #$00
-LDY #$06
+LDA #$00					;
+LDY #$06					;
 
-LOOP_E16A:                 
-STA $007E,Y					;reset some table. possible directions (which are semi-random)
-DEY
-BPL LOOP_E16A
+LOOP_E16A:
+STA EntitiesPerPlatform,Y			;clear the entity count for each platform (we'll re-count everything)
 
-LDY #$00
+DEY						;
+BPL LOOP_E16A					;
+
+LDY #$00					;now go through barrels
 
 LOOP_E172:
-LDA $0068,Y					;is barrel on a platform? Y/N
+LDA Barrel_CurrentPlatformIndex,Y		;is barrel even alive? (if platform value is 0, most likely not)
 BEQ CODE_E17F					;if no, check next barrel
-TAX
+TAX						;current platform has +1 barrel
 
-LDA $7E,X					;no INC? (btw the INC IS used later in this very same routine, so ???)
-CLC
-ADC #$01
-STA $7E,X
+LDA EntitiesPerPlatform,X			;no INC? (btw the INC IS used later in this very same routine, so ???)
+CLC						;
+ADC #$01					;
+STA EntitiesPerPlatform,X			;barrel counts as an entity, add that in
 
-CODE_E17F: 
-CPY #$09					;max of 9, though i never triggered such number of barrels
-BEQ CODE_E187
-INY                      
-JMP LOOP_E172
-  
+CODE_E17F:
+CPY #$09					;max of 9 barrels to go through
+BEQ CODE_E187					;
+INY						;
+JMP LOOP_E172					;
+
 CODE_E187:
-LDX $59                  
-CPX #$07                 
-BEQ RETURN_E199
+LDX Jumpman_CurrentPlatformIndex		;check if jumpman is on the very last platform (where Pauline is)
+CPX #$07					;
+BEQ RETURN_E199					;don't count anything there
 
-INC $7E,X					;wait a sec, this is illegal! Everyone knows that this should be CLC ADC instead of INC. I mean c'mon!
+INC EntitiesPerPlatform,X			;wait a sec, this is illegal! Everyone knows that this should be CLC ADC instead of INC. I mean c'mon!
 
 LDA Jumpman_State				;if player's holding a hammer
 CMP #Jumpman_State_Hammer			;
 BNE RETURN_E199					;
 
-LDX $59
-INC $7E,X					;increase smth
+LDX Jumpman_CurrentPlatformIndex
+INC EntitiesPerPlatform,X			;hammer now counts as an entity
 
 RETURN_E199:
 RTS						;
 
-CODE_E19A:
+RunOilBarrelFlame_E19A:
 LDA Flame_State					;see if oil barrel flame is a thing
 BNE CODE_E19F					;if so, run it's code
 RTS						;
@@ -6475,7 +6541,8 @@ CODE_E213:
 LDA Timer_FlameEnemySpawn			;don't appear yet
 BNE CODE_E228					;
 
-JSR CODE_EAF7					;get difficulty
+JSR GetCurrentDifficulty_EAF7			;get difficulty
+
 LDA DATA_C466,X					;
 STA Timer_FlameEnemySpawn			;and set timer for next flame spawn
 
@@ -6645,11 +6712,11 @@ STY FlameEnemy_State,X				;
 RTS						;
 
 CODE_E2F9:
-LDA #$55					;animate every other frame
+LDA #%01010101					;animate every other frame
 STA $0A						;
 STA $0B						;
 
-JSR CODE_E806					;
+JSR FlameEnemyTiming_E806			;
 BNE CODE_E305					;
 RTS						;
 
@@ -6732,11 +6799,11 @@ RTS						;
 
 ;movement?
 CODE_E368:
-LDA #$55					;
+LDA #%01010101					;
 STA $0A						;run the code every other frame
 STA $0B						;
 
-JSR CODE_E806					;also time
+JSR FlameEnemyTiming_E806			;also time
 BNE CODE_E374					;also run
 RTS						;also also
 
@@ -6875,7 +6942,7 @@ CODE_E429:
 LDA DATA_C3F4,X					;
 STA $0A						;
 
-LDA DATA_C3F4+1,X				;              
+LDA DATA_C3F4+1,X				;
 STA $0B						;
 JMP CODE_E44B					;
 
@@ -6894,7 +6961,7 @@ LDA DATA_C3F8+1,X				;
 STA $0B						;
 
 CODE_E44B:
-JSR CODE_E806					;climb every few frames
+JSR FlameEnemyTiming_E806			;climb every few frames
 BNE CODE_E451					;
 RTS						;
 
@@ -7465,7 +7532,7 @@ JMP CODE_E758					;
 CODE_E755:
 SEC						;the platformer is shorter this way
 SBC #$08					;
-  
+
 CODE_E758:
 DEY						;
 JMP LOOP_E747					;next platform
@@ -7614,13 +7681,13 @@ RTS						;
 ;FlameEnemy_TimingCounter = 8 - checks bit 0 of $0B - don't run the routine
 ;FlameEnemy_TimingCounter = 3 - checks bit 3 of $0A - run the routine
 ;and so on.
-;it's pretty much the same routine as with barrels/platform lifts (at CODE_DFE8)
+;it's pretty much the same routine as with barrels/platform lifts (at PlatformAndBarrelTiming_DFE8)
 
-CODE_E806:
+FlameEnemyTiming_E806:
 LDX FlameEnemy_CurrentIndex			;
 INC FlameEnemy_TimingCounter,X			;
 
-LDA FlameEnemy_TimingCounter,X
+LDA FlameEnemy_TimingCounter,X			;
 BMI CODE_E815					;if negative (for whatever reason)
 CMP #$10					;
 BCS CODE_E815					;
@@ -7664,7 +7731,7 @@ RTS						;
 
 ;handle moving lifts (75M only)
 RunMovingPlatforms_E834:
-JSR CODE_EAF7					;get speed index (dependent on difficulty)
+JSR GetCurrentDifficulty_EAF7			;get speed index (dependent on difficulty)
 
 LDA DATA_C45C,X					;bits to check 1
 STA $0A						;
@@ -7674,7 +7741,7 @@ STA $0B						;
 
 LDA #$00					;only one check
 STA Entity_TimingIndex				;
-JSR CODE_DFE8					;check if it should run platforms code
+JSR PlatformAndBarrelTiming_DFE8		;check if it should run platforms code
 BNE CODE_E84B					;every some frames, run the routine
 RTS						;
 
@@ -7809,7 +7876,7 @@ LDA MovingPlatform_Upward_RespawnFlag		;check if we despawned a platform and som
 CMP #$01					;
 BNE CODE_E93B					;check the other flag then
 
-LDA #$00					;
+LDA #$00					;loop through platforms going up
 STA MovingPlatform_CurrentIndex			;
 
 LOOP_E918:
@@ -7817,6 +7884,7 @@ LDA MovingPlatform_CurrentIndex			;
 CMP #$03					;check only 3 platforms that move up
 BEQ RETURN_E967					;when all checked, end
 TAX						;
+
 LDY DATA_C2CC,X					;
 LDA OAM_Y,Y					;
 CMP #$FF					;if the platform is offscreen, bring it back on screen
@@ -7824,7 +7892,7 @@ BEQ CODE_E92E					;
 
 INC MovingPlatform_CurrentIndex			;check next platform check
 JMP LOOP_E918					;
-  
+
 CODE_E92E:
 LDA #PlatformSprite_Upward_SpawnPoint		;
 JSR CODE_E97A					;set it's position
@@ -7835,24 +7903,25 @@ STA MovingPlatform_Upward_RespawnFlag		;no more respawn
 RTS						;
 
 CODE_E93B:
-LDA MovingPlatform_Downward_RespawnFlag		;
+LDA MovingPlatform_Downward_RespawnFlag		;respawn downward lifts?
 CMP #$01					;
-BNE RETURN_E967					;
+BNE RETURN_E967					;if not, well... don't.
 
-LDA #$03                 
-STA MovingPlatform_CurrentIndex
+LDA #$03					;loop through platforms going down
+STA MovingPlatform_CurrentIndex			;
 
 CODE_E945:
 LDA MovingPlatform_CurrentIndex			;only downward moving lifts to check
 CMP #$06					;
 BEQ RETURN_E967					;
 TAX						;
+
 LDY DATA_C2CC,X					;
 LDA OAM_Y,Y					;offscreen? plz come back i'm begging you i'm literally shaking and crying rn
 CMP #$FF					;
 BEQ CODE_E95B					;
 
-INC MovingPlatform_CurrentIndex			;
+INC MovingPlatform_CurrentIndex			;next platform
 JMP CODE_E945					;
 
 CODE_E95B:  
@@ -7860,7 +7929,7 @@ LDA #PlatformSprite_Downward_SpawnPoint		;
 JSR CODE_E97A					;spawn in
 JSR CODE_E968					;
 
-LDA #$00					;
+LDA #$00					;don't respawn anymore
 STA MovingPlatform_Downward_RespawnFlag		;
 
 RETURN_E967:
@@ -7921,9 +7990,9 @@ STA $02						;
 JMP CODE_E9DA					;set it's gfx frame to be unpressed
 
 CODE_E9B4:
-JSR CODE_EA01                
+JSR CODE_EA01					;make springboard fall
 CMP #$FF					;
-BEQ CODE_E9F3					;don't run
+BEQ CODE_E9F3					;reached the end of the fall?
 JMP CODE_E9EA					;
 
 ;bounce off the platform
@@ -8002,7 +8071,7 @@ BCC CODE_EA2F					;
 JSR SpriteDrawingPREP_Draw16x16_EAD1		;draw 16x16
 JSR CODE_F094					;actually draw
 
-LDA #$FF					;return FF
+LDA #$FF					;almost reached the end of the fall, no animating at this point
 RTS						;
 
 CODE_EA2A:
@@ -8038,7 +8107,7 @@ STA $02						;
 
 JSR CODE_EADB					;yes, spawn
 
-JSR CODE_EAF7					;difficulty thing
+JSR GetCurrentDifficulty_EAF7			;difficulty thing
 LDA DATA_C457,X					;restore timer (frequency depends on difficulty)
 STA Timer_EntitySpawn				;
 
@@ -8198,9 +8267,8 @@ LDA OAM_Y,X					;y-pos
 STA $01						;
 RTS						;
 
-;get speed index for various objects, to make it more difficult for the player
-;GetDifficultyIndex_EAF7:
-CODE_EAF7:
+;get an index for various objects, to make it more difficult for the player
+GetCurrentDifficulty_EAF7:
 LDA GameMode					;check for Game B
 AND #$01					;
 CLC						;
@@ -8208,9 +8276,9 @@ ADC LoopCount					;and add loop counter
 TAX						;
 CPX #$04					;
 BCC RETURN_EB05					;if it's more than 4, limit
-  
+
 LDX #$04					;maximum of speed values
-  
+
 RETURN_EB05:
 RTS						;
 
@@ -8239,7 +8307,7 @@ BMI CODE_EB54					;can toss barrels and stuff and we need to animate that
 
 ;animate idle DK hitting his chest
 
-LDA $44						;
+LDA $44						;DK animation???
 BEQ CODE_EB4F					;restore the timer if at zero
 
 CODE_EB2B:
@@ -8350,7 +8418,7 @@ ORA #$10					;
 STA Score_UpdateFlag				;
 RTS						;
 
-CODE_EBB6:
+HandleBonusCounter_EBB6:
 LDA Timer_BonusScoreDecrease			;check bonus counter timer
 BEQ CODE_EBBB					;if zero, decrease or kill player
 RTS						;
@@ -8446,6 +8514,7 @@ INC Demo_InputIndex				;next input
 RTS						;
 
 CODE_EC29:
+;JumpmanInteractWithEntities_EC29:
 JSR JumpmanPosToScratch_EAE1			;
 
 LDA #$4C					;
@@ -8456,10 +8525,10 @@ CMP #Phase_75M					;75m? can jump over springs... maybe???
 BEQ CODE_EC3B					;
 CMP #Phase_25M					;not 25m? can't jump over barrels/destroy them with a hammer because there isn't any
 BNE CODE_EC3E					;
-  
+
 CODE_EC3B:
 JSR CODE_EC44					;score for jumping over stuff + hammer interaction
-  
+
 CODE_EC3E:
 JSR CODE_ED8A					;make flame bois destructable with a hammer
 JMP CODE_EDC5					;run misc. hitboxes (oil barrel flame, lift ends in 75M, DK in 100M)
@@ -8470,9 +8539,9 @@ LDA #$00					;
 STA Barrel_CurrentIndex				;
 
 CODE_EC48:
-LDA #$3A
-JSR CODE_C847
-JSR GetBarrelOAM_EFD5
+LDA #$3A					;barrel/springboard hitbox
+JSR CODE_C847					;
+JSR GetBarrelOAM_EFD5				;
 
 LDA PhaseNo					;check 25M
 CMP #Phase_25M					;
@@ -8488,8 +8557,8 @@ JSR EntityPosToScratch_EAEC
 JSR CODE_EFEF					;check collision and calculate distances
 BNE CODE_ECA7					;if made a contact with the barrel, dead
 
-LDA Jumpman_State
-CMP #Jumpman_State_Jumping                 
+LDA Jumpman_State				;
+CMP #Jumpman_State_Jumping			;
 BNE CODE_EC97					;if jumpman isn't jumping, don't check barrel
 
 LDA Direction					;check if moving while jumping
@@ -8499,7 +8568,7 @@ BNE CODE_EC76					;if so, execute this
 LDA Hitboxes_XDistance				;if the barrel and the jumpman are at the same position
 BEQ CODE_EC80					;
 JMP CODE_EC97					;
-  
+
 CODE_EC76:
 LDA Hitboxes_XDistance				;if 3 or more pixels to the right of the barrel (top-right of barrel vs top right of the jumpman)
 CMP #$03					;
@@ -8507,7 +8576,7 @@ BCS CODE_EC97					;too far, no score
 
 LDA Jumpman_AirMoveFlag				;checks if updated horizontal position this frame
 BNE CODE_EC97					;no score
-  
+
 CODE_EC80:
 LDA Hitboxes_YDistance				;check how much higher the player is in relation to the barrel
 CMP #$18					;
@@ -8535,7 +8604,7 @@ TAX						;
 LDA Barrel_CurrentIndex				;
 CMP DATA_C1FD,X					;maximum slots for barrels/springboards
 BEQ CODE_ECAF					;reached max, run hammer destruction, i think?
-JMP CODE_EC48
+JMP CODE_EC48					;
 
 ;jumpman contacted barrel (or other enemy) - DIE
 CODE_ECA7:
@@ -8562,34 +8631,34 @@ RTS						;
 ;check hammer<->hazard collision
 CODE_ECBF:
 LDA Jumpman_HeldHammerIndex			;are we holding a hammer?
-BNE CODE_ECC6					;(answer - this check is reduntant)
+BNE CODE_ECC6					;(answer - this check is redundant)
 JMP CODE_ED87					;untriggered
 
 CODE_ECC6:
 LDA Hammer_JumpmanFrame				;get hammer's state (wether it's up or down based on jumpman's position)
-LSR A                    
-LSR A                    
+LSR A						;
+LSR A						;
 BEQ CODE_ECD1					;if it's down, check hitbox when it's down (duh)
 
-LDA #$00					;UP
+LDA #$00					;DOWN
 JMP CODE_ECD3					;
-  
+
 CODE_ECD1:
-LDA #$01
+LDA #$01					;UP
 
 CODE_ECD3:
-BEQ CODE_ECE8
+BEQ CODE_ECE8					;adjust hitbox if the hammer is up
 
-LDA #$04
-CLC                      
-ADC $0203                
-STA $00
+LDA #$04					;adjust hammer hitbox position (center relative to the player)
+CLC						;
+ADC Jumpman_OAM_X				;
+STA $00						;
 
-LDA $0200                
-SEC                      
-SBC #$10                 
-STA $01                  
-JMP CODE_ED07
+LDA Jumpman_OAM_Y				;above the player
+SEC						;
+SBC #$10					;
+STA $01						;
+JMP CODE_ED07					;
 
 CODE_ECE8:
 LDA Direction_Horz				;shift hammer's hitbox depending on jumpman's horizontal direction
@@ -8599,13 +8668,13 @@ BEQ CODE_ECF7					;
 LDA Jumpman_OAM_X				;jumpman's x-pos - 10
 SEC						;
 SBC #$10					;
-JMP CODE_ECFD					;for interaction?
-  
+JMP CODE_ECFD					;
+
 CODE_ECF7:
 LDA Jumpman_OAM_X				;jumpman's x-pos + 10
 CLC						;
 ADC #$10					;
-  
+
 CODE_ECFD:
 STA $00						;scratch ram
 
@@ -8613,7 +8682,7 @@ LDA Jumpman_OAM_Y				;jumpman's y-pos
 CLC						;
 ADC #$06					;
 STA $01						;
-  
+
 CODE_ED07:
 LDA #$3C					;get hammer's hitbox
 JSR CODE_EFE8					;
@@ -8623,8 +8692,8 @@ CMP #Phase_25M					;if we're NOT in 25M, that means can interact with flamies ON
 BNE CODE_ED34					;
 
 ;check hammer<->barrel interaction
-LDA #$00                 
-STA Barrel_CurrentIndex
+LDA #$00					;
+STA Barrel_CurrentIndex				;
 
 LOOP_ED16:
 JSR GetBarrelOAM_EFD5				;
@@ -8671,7 +8740,7 @@ JMP LOOP_ED38					;loop
 CODE_ED57:
 LDA #Sound_Effect2_EnemyDestruct		;sound ofc
 STA Sound_Effect2				;
-  
+
 LDA $00						;not sure yet (X and Y-pos related)
 STA $05						;
 
@@ -8713,8 +8782,8 @@ CODE_ED8A:
 LDA #$00					;
 STA FlameEnemy_CurrentIndex			;start from the first one
 
-LDA #$3A                 
-JSR CODE_C847
+LDA #$3A					;
+JSR CODE_C847					;hitbox
 
 LOOP_ED93:
 JSR GetFlameEnemyOAM_EFDD			;
@@ -8807,13 +8876,13 @@ RETURN_EE0B:
 RTS						;
 
 CODE_EE0C:
-LDA #$80					;
+LDA #%10000000					;
 STA $0A						;
 
-LDA #$80					;oh yeah, uhuh, right
-STA $0B
+LDA #%10000000					;oh yeah, uhuh, right
+STA $0B						;(these are stored in the routine anyway, so this is pointless, not to mention the same LDA value from before)
 
-JSR CODE_DFE4					;run every 8th frame
+JSR PlatformAndBarrelTiming_BothBytes_DFE4	;run every 8th frame
 BNE CODE_EE1A					;
 RTS
 
@@ -8850,11 +8919,12 @@ DEX						;
 LDA DATA_C1EC,X					;show animation
 STA $02						;
 
-JSR CODE_EADB
+JSR CODE_EADB					;draw tiles
 
 LDX $04						;saved OAM slot
-LDA #$02					;
-JSR CODE_EE6C					;something something draw
+
+LDA #EnemyDestruction_Prop			;
+JSR CODE_EE6C					;set props
 
 INC Hammer_DestroyingEnemy			;next animation next frame
 RTS						;
@@ -8888,14 +8958,14 @@ STA OAM_Prop+8,X				;
 STA OAM_Prop+12,X				;
 RTS						;
 
-CODE_EE79:  
+CODE_EE79:
 LDY PhaseNo					;there are no background collectibles in 25M
 CPY #Phase_25M					;
 BNE CODE_EE80					;
 RTS						;
 
 CODE_EE80:
-LDA $BE						;idk
+LDA Jumpman_ActingFlag				;jumpman is performing some sorta action...
 BEQ RETURN_EED8					;
 CPY #Phase_100M					;if not 100M, no bolts
 BNE CODE_EEF0					;
@@ -8930,8 +9000,8 @@ LDA #$11					;erase 1 tile (phase 3 bolt)
 STA EraseBuffer					;
 
 LDA #$01					;mark this bolt as removed
-STA Bolt_RemovedFlag,Y              
-JSR CODE_EF38
+STA Bolt_RemovedFlag,Y				;
+JSR CODE_EF38					;
 
 LDA Jumpman_OAM_Y				;put score sprite above the player
 CLC						;
@@ -8971,7 +9041,7 @@ INX						;check the next bolt
 INY						;
 JMP LOOP_EE8D					;
 
-CODE_EEF0:     
+CODE_EEF0:
 LDY PhaseNo					;
 LDX DATA_C5FA,Y					;
 
@@ -9003,7 +9073,7 @@ STA $06						;
 
 LDA Jumpman_OAM_X				;at player's x-pos
 STA $05						;
- 
+
 LDX #$03					;800 score for the item
 JSR CODE_CFC6					;
 
@@ -9026,7 +9096,7 @@ STA EraseBuffer+1				;|
 STA EraseBuffer+2				;|
 STA EraseBuffer+3				;|
 STA EraseBuffer+4				;/
-   
+
 LDA DATA_C5D6,X					;VRAM address based on where we removed a thing
 STA $01						;
 
@@ -9651,7 +9721,7 @@ RTS						;
 
 ;NES Stripe Image RLE
 
-LOOP_F1EC:
+UpdateScreenLoop_F1EC:
 STA VRAMDrawPosReg				;store VRAM position to write to (high byte)
 INY						;
 LDA ($00),Y					;
@@ -9685,7 +9755,7 @@ INY						;otherwise use next value
 
 CODE_F214:
 LDA ($00),Y					;
-STA $2007					;
+STA DrawRegister				;
 DEX						;
 BNE LOOP_F211					;
 SEC						;set carry
@@ -9697,11 +9767,13 @@ LDA #$00					;high byte ofc.
 ADC $01						;
 STA $01						;
 
-CODE_F228:
+;used to draw stuff on screen
+;in this game, this is only called to draw from buffer and sometimes directly from draw pointers. there are some other drawing routines elsewhere.
+UpdateScreen_F228:
 LDX HardwareStatus				;
 LDY #$00					;
 LDA ($00),Y					;if value isn't zero, which acts as stop writing comand
-BNE LOOP_F1EC					;do actual writing
+BNE UpdateScreenLoop_F1EC			;do actual writing
 
 LDA CameraPositionX				;restore camera position
 STA CameraPositionReg				;
@@ -9934,11 +10006,13 @@ RTS						;
 ;$01 - score or counter offset (bits 0-2), valid values are listed below. bit 3 - do calculation with ones and tens, otherwise hundreds and thousands
 
 ;score substraction (used for BONUS counter)
+;SubstractFromScoreCounter_F33E:
 CODE_F33E:
 LDX #$FF					;
 BNE CODE_F344					;
 
 ;score addition
+;AddToScoreCounter_F342:
 CODE_F342:
 LDX #$00					;
 
