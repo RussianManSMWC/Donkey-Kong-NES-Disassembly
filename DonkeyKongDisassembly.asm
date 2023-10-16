@@ -102,8 +102,8 @@ db $10,$01,$50,$01
 db $30,$D0,$FF,$FF				;after this it'll start taking garbage values, which should be impossible, unless you disable barrels
 
 DATA_C03C:
-dw DATA_C63E					;\pointers to kong's frames. this one is "toss to the side"
-dw DATA_C657					;/
+dw Tilemap_DonkeyKong_SideToss_C63E		;\pointers to Kong's frames. this one is "toss to the side"
+dw Tilemap_DonkeyKong_Stationary_C657		;/this one is simply stationary Donkey (default pose)
 dw DATA_C6E1					;erase II if not in two player mode
 dw DATA_C760					;erase various tiles for ending (part 1)
 
@@ -114,9 +114,9 @@ dw DATA_C6E4
 dw DATA_C6F1
 dw DATA_C753
 dw DATA_C708
-dw DATA_C719					;init Donkey Kong's defeated frame
-dw DATA_C71C					;Defeated Kong frame 1
-dw DATA_C735
+dw DATA_C719					;init Donkey Kong's defeated frame (attributes & first frame)
+dw Tilemap_DonkeyKong_Defeated1_C71C		;Defeated Kong frame 1
+dw Tilemap_DonkeyKong_Defeated2_C735		;Defeated Kong frame 2
 dw DATA_C74E
 
 ;other tables for 25M
@@ -129,20 +129,20 @@ UNUSED_C05C:
 dw UnusedCollisionTable_0460
 
 DATA_C05E:
-dw DATA_C0C3					;25M platform collision dimensions
-dw DATA_C0DF					;25M fall area collision dimensions
-dw DATA_C16E					;25M broken ladders' collision dimensions
+dw Phase25MPlatforms_Hitboxes_C0C3		;25M platform collision dimensions
+dw Phase25MGaps_Hitbox_C0DF			;25M fall area collision dimensions
+dw BrokenLadder_Hitbox_C16E			;25M broken ladders' collision dimensions
 
 ;collision dimensions related to the dynamic table from above (also happens to be unused)
 UNUSED_C064:
 dw UNUSED_C2C4
 
 DATA_C066:
-dw DATA_C2C8					;moving platforms' hitbox (75M)
+dw MovingPlatform_Hitbox_C2C8			;moving platforms' hitbox (75M)
 dw DATA_C186
-dw DATA_C1B0
+dw HammerPickup_Hitbox_C1B0
 dw DATA_C192
-dw DATA_C1CF					;something barrel related
+dw DATA_C1CF					;y-positions for barrel drop areas (onto lower platform)
 
 dw DATA_C1D5					;tossed barrel platform y-positions to make it bounce off (pattern = Barrel_VertTossPattern_StraightDown)
 dw UNUSED_C1DB					;tossed barrel platform y-positions to make it bounce off (pattern = Barrel_VertTossPattern_DiagonalRight)
@@ -151,18 +151,18 @@ dw DATA_C1E1					;tossed barrel platform y-positions to make it bounce off (patt
 dw DATA_C19E					;
 dw DATA_C1E7					;
 
-;Background Donkey Kong Tilemaps (there are more elsewhere)
-dw DATA_C60C
-dw DATA_C670
-dw DATA_C689
-dw DATA_C625
+;MORE Background Donkey Kong Tilemaps
+dw Tilemap_DonkeyKong_PickupBarrel_C60C		;
+dw Tilemap_DonkeyKong_HitChestLeftHand_C670	;\chest hitting frames
+dw Tilemap_DonkeyKong_HitChestRightHand_C689	;/Tilemap_DonkeyKong_HitChestRightHand_C689
+dw Tilemap_DonkeyKong_HoldingBarrel_C625
 ;-----------------------------------------------------
 
-dw DATA_C6A2
-dw EraseBuffer					;use RAM $CC (buffer for misc tile erasing (bolts and pauline's items))
+dw Palette_FlameEnemy_Threatened_C6A2		;Pointer to Sprite Palette 2 (100M flame enemies when Jumpman is equipped with the hammer. turn blue by default)
+dw EraseBuffer					;use RAM (buffer for misc tile erasing (bolts and pauline's items))
 dw DATA_C18E
 dw DATA_C196
-dw DATA_C6A6					;Pointer to Sprite Palette 2
+dw Palette_FlameEnemy_C6A6			;Pointer to Sprite Palette 2 (flame enemies)
 
 ;data related with checking sloped (or elevated or whatever I'll call them the next day) surfaces (25M only)
 ;byte 1 - base x-pos for the lowest elevation
@@ -191,6 +191,7 @@ db $BC,$9E,$80,$62,$44,$28,$FF
 ;collision "dimensions" for platforms for 25M. first 4 values are for an extended part of the lowest platform, last 4 are for small bits
 ;format: x-offset, y-offset, width, height
 ;really, only width matters in this case
+Phase25MPlatforms_Hitboxes_C0C3:
 DATA_C0C3:
 db $00,$00					;\
 db $80,$00					;/lowest platform extended part hitbox ($80 pixels wide)
@@ -215,6 +216,7 @@ db $FE
 
 ;collision dimensions for fall areas
 ;same format as before: x-offset, y-offset, width, height
+Phase25MGaps_Hitbox_C0DF:
 DATA_C0DF:
 db $00,$00
 db $10,$03
@@ -301,7 +303,7 @@ db $68,$40,$00
 db $FE
 
 ;hitbox dimensions for broken ladders. in this order: left, top, right, bottom (so the last two are width and height respectively)
-DATA_C16E:
+BrokenLadder_Hitbox_C16E:
 db $00,$00
 db $08,$18
 
@@ -321,15 +323,28 @@ db $C6,$AA,$8C,$6D,$4D				;y-positions that the barrel should reach to change fr
 DATA_C181:
 db $C4,$6C,$7C,$54,$C4
 
+;these are jumpman's hitbox dimensions for platforms and ladders in 25M level (so he is correctly offset & interacts with environment)
+;x-disp, y-disp, width, height
+;8 pixels to the right, whopping 17 pixels down... and it's 10 pixels wide and 17 pixels tall?
+;yes
+;Jumpman_TileHitbox_C186:
 DATA_C186:
 db $08,$11
 db $0A,$11
 
+;unused table similar to above, which is vertically closer to jumpman by 1px
+;doesn't have a pointer entry
+;Jumpman_TileHitboxUNUSED_C18A:
 UNUSED_C18A:
-db $08,$10,$0A,$11
+db $08,$10
+db $0A,$11
 
+;same as above, but used when jumpman is jumping/falling
+;only difference is it's closer to jumpman on y-axis by TWO pixels!
+;Jumpman_TileHitboxWhenAirborn_C18E:
 DATA_C18E:
-db $08,$0F,$0A,$11
+db $08,$0F
+db $0A,$11
 
 DATA_C192:
 db $05,$01,$0C,$09
@@ -344,9 +359,7 @@ DATA_C19E:
 db $04,$04,$0C,$0D
 
 ;jumpman's animation frames for when holding a hammer
-DATA_C1A2:
-;the table is quite a mouthful probably
-;PlayerHammerWalkingAnimationFrames_C1A2:
+Jumpman_HammerWalkingAnimFrames_C1A2:
 db Jumpman_GFXFrame_Walk2_HammerUp
 db Jumpman_GFXFrame_Stand_HammerUp
 db Jumpman_GFXFrame_Walk1_HammerUp
@@ -361,9 +374,10 @@ db $02,$03					;unused Phase 2 (seems to match the Arcade version's hammer posit
 db $00,$00					;Phase 3 doesn't have hammers
 db $03,$04					;Phase 4
 
-DATA_C1B0:
+;hitbox dimensions for the hammer when it can be grabbed by the player
+HammerPickup_Hitbox_C1B0:
 db $00,$00
-db $08,$08
+db $08,$08					;8 by 8 pixels
 
 ;boundary positions
 DATA_C1B4:
@@ -409,7 +423,7 @@ DATA_C1EB:
 db $19
 
 ;enemy destruction frames (by hammer)
-DATA_C1EC:
+EnemyDestructionAnimationFrames_C1EC:
 db EnemyDestruction_Frame1
 db EnemyDestruction_Frame2
 db EnemyDestruction_Frame1
@@ -531,12 +545,12 @@ db $04,$01
 db $1B,$0E
 
 ;hitbox dimensions for moving platforms (75M)
-DATA_C2C8:
+MovingPlatform_Hitbox_C2C8:
 db $00,$01
 db $12,$01				;$12 (decimal 18) pixels wide, only 1 pixel high
 
 ;OAM slots for moving platforms from phase 2 (75M)
-DATA_C2CC:
+MovingPlatform_OAMSlots_C2CC:
 db (PlatformSprite_OAM_Slot*4)
 db (PlatformSprite_OAM_Slot*4)+8
 db (PlatformSprite_OAM_Slot*4)+16
@@ -788,26 +802,32 @@ db $B0,$A0,$78,$68,$68
 DATA_C448:
 db $88,$88,$88,$88,$88
 
-;barrel toss timings for DK (based on difficulty)
+;vertical barrel toss timings for DK (based on difficulty)
+;DKVerticalBarrelTossTimes_C44D:
 DATA_C44D:
 db $48,$38,$28,$18,$18
 
+;unused times, also based on difficulty I assume (related to the scrapped 50M?)
 UNUSED_C452:
 db $BB,$BB,$5E,$2F,$13
 
 ;timer for the next springboard spawn, based on difficulty
+;SpringboardSpawnTimes_C457:
 DATA_C457:
 db $88,$78,$64,$56,$49
 
 ;timings for moving platforms, move every x-frames based on difficulty (bit set - move)
+;MovingPlatformUpdateFrequency1_C45C:
 DATA_C45C:
 db %10001000,%10001000,%00100100,%01010101,%01010101
 
 ;second set of bits for above
+;MovingPlatformUpdateFrequency2_C461:
 DATA_C461:
 db %10001000,%10001000,%01001001,%01010101,%01010101
 
 ;number of frames between each flame enemy spawn for 100M, based on difficulty
+;100MFlameEnemySpawnTimes_C466:
 DATA_C466:
 db $40,$20,$10,$08,$01
 
@@ -1108,61 +1128,76 @@ db $8D						;HOW MANY TIMES DO WE HAVE TO TEACH YOU A LESSON OLD MAN (no phase 2
 db $84
 db $8D
 
-DATA_C60C:
-db $46
-db $76,$77,$78,$79,$7A,$7B
-db $7C,$7D,$7E,$7F,$80,$81
-db $82,$83,$84,$85,$24,$24
-db $86,$87,$24,$24,$24,$88
+;picking up a barrel from the stack frame
+Tilemap_DonkeyKong_PickupBarrel_C60C:
+db $46						;6 columns, 4 tiles each
+db $76,$77,$78,$79
+db $7A,$7B,$7C,$7D
+db $7E,$7F,$80,$81
+db $82,$83,$84,$85
+db $24,$24,$86,$87
+db $24,$24,$24,$88
 
-DATA_C625:
+Tilemap_DonkeyKong_HoldingBarrel_C625:
 db $46
-db $24,$9C,$9D,$9E,$9F,$A0
-db $A1,$A2,$A3,$A4,$A5,$A6
-db $A7,$A8,$A9,$AA,$AB,$AC
-db $AD,$AE,$24,$AF,$B0,$B1
+db $24,$9C,$9D,$9E
+db $9F,$A0,$A1,$A2
+db $A3,$A4,$A5,$A6
+db $A7,$A8,$A9,$AA
+db $AB,$AC,$AD,$AE
+db $24,$AF,$B0,$B1
 
 ;donkey kong frame - throwing barrel to the side (phase 1)
-DATA_C63E:
-db $46						;4 rows, 6 tiles each
-db $24,$24,$24,$89,$24,$24
-db $8A,$8B,$8C,$8D,$8E,$8F
-db $90,$91,$92,$93,$94,$95
-db $96,$97,$98,$99,$9A,$9B
+Tilemap_DonkeyKong_SideToss_C63E:
+db $46
+db $24,$24,$24,$89
+db $24,$24,$8A,$8B
+db $8C,$8D,$8E,$8F
+db $90,$91,$92,$93
+db $94,$95,$96,$97
+db $98,$99,$9A,$9B
 
 ;donkey kong frame - standing still
-DATA_C657:
+Tilemap_DonkeyKong_Stationary_C657:
 db $46
-db $24,$B2,$68,$9E,$B5,$B6
-db $6C,$C7,$A3,$A4,$69,$A6
-db $A7,$A8,$6B,$AA,$C9,$CA
-db $6D,$BF,$24,$CD,$6A,$B1
+db $24,$B2,$68,$9E
+db $B5,$B6,$6C,$C7
+db $A3,$A4,$69,$A6
+db $A7,$A8,$6B,$AA
+db $C9,$CA,$6D,$BF
+db $24,$CD,$6A,$B1
 
-;defeated kong 1
-DATA_C670:
+;Chest hit, left hand (from his perspective ofc)
+Tilemap_DonkeyKong_HitChestLeftHand_C670:
 db $46
-db $C2,$C3,$24,$9E,$C4,$C5
-db $C6,$C7,$A3,$B9,$A5,$A6
-db $A7,$BB,$6B,$C8,$C9,$CA
-db $CB,$CC,$24,$CD,$CE,$CF
+db $C2,$C3,$24,$9E
+db $C4,$C5,$C6,$C7
+db $A3,$B9,$A5,$A6
+db $A7,$BB,$6B,$C8
+db $C9,$CA,$CB,$CC
+db $24,$CD,$CE,$CF
 
-;defeated kong 2
-DATA_C689:
+;Chest hit, right hand
+Tilemap_DonkeyKong_HitChestRightHand_C689:
 db $46
-db $24,$B2,$B3,$B4,$B5,$B6
-db $B7,$B8,$A3,$B9,$69,$BA
-db $A7,$BB,$A9,$AA,$BC,$BD
-db $BE,$BF,$C0,$C1,$24,$B1
+db $24,$B2,$B3,$B4
+db $B5,$B6,$B7,$B8
+db $A3,$B9,$69,$BA
+db $A7,$BB,$A9,$AA
+db $BC,$BD,$BE,$BF
+db $C0,$C1,$24,$B1
 
 ;palette for fireballs when in "panic mode" (100M exclusive)
 ;affects sprite palette 2
-DATA_C6A2:
-db $13,$2C,$16,$13
+Palette_FlameEnemy_Threatened_C6A2:
+db $13
+db $2C,$16,$13
 
 ;sprite color palette 2 for flames.
 ;1 row with 3 "tiles" to upload (which is, 3 colors). 
-DATA_C6A6:
-db $13,$16,$30,$37
+Palette_FlameEnemy_C6A6:
+db $13
+db $16,$30,$37
 
 ;data for "Player X" screen.
 DATA_C6AA:
@@ -1274,8 +1309,8 @@ db $12						;two vertical lines with 1 byte each
 db $AA,$AA
 
 ;first frame
-DATA_C71C:
-db $46						;defeated frame (6 rows, 4 tiles each)
+Tilemap_DonkeyKong_Defeated1_C71C:
+db $46						;defeated frame (6 columns, 4 tiles each)
 db $24,$24,$DC,$DD
 db $D4,$D5,$DE,$DF
 db $D6,$D7,$E0,$E1
@@ -1284,7 +1319,7 @@ db $DA,$DB,$E4,$E5
 db $24,$24,$E6,$E7
 
 ;second frame
-DATA_C735:
+Tilemap_DonkeyKong_Defeated2_C735:
 db $46
 db $E8,$E9,$EA,$EB
 db $EC,$ED,$EE,$EF
@@ -2334,8 +2369,8 @@ STA Jumpman_GFXFrame				;
 LDA #$58					;slightly over one pixel speed (although gravity also affects upward speed)
 STA Jumpman_UpwardSubSpeed			;
 
-LDA #$20
-STA $A2
+LDA #%00100000					;
+STA Hammer_AnimationFrameCounter		;initialize hammer frame counter (or """""frame counter""""")
 
 LDA #$80					;
 STA RNG_Value					;set first RNG byte as 80
@@ -2775,11 +2810,11 @@ CODE_CED3:
 JSR CODE_D175					;get player's directions & maybe jump
 
 CODE_CED6:
-JSR CODE_EB06					;DK animations
+JSR CODE_EB06					;DK animations (HandleDonkeyKong_EB06)
 JSR HandleBonusCounter_EBB6			;handle bonus counter (decrease over time & kill the player)
 JSR HandleHurryUpMusic_D041			;play hurry up music when the bonus counter is low enough
 JSR CODE_D1A4					;handle player's state
-JSR CODE_EA5F					;animate pauline sometimes
+JSR HandlePauline_EA5F				;animate pauline sometimes
 JSR CODE_E1E5					;flame enemy spawning or smth
 JSR CODE_EE79					;handle collectible items and bolts
 
@@ -3590,7 +3625,7 @@ STA $06						;
 LDA UNUSED_C473+1,X				;
 STA $07						;
 
-JSR CODE_D8AD					;a more standard platform vollision check
+JSR CODE_D8AD					;a more standard platform collision check
 STA $0C						;collision result (the routine already stores to this BTW)
 BNE CODE_D323					;
 
@@ -3617,7 +3652,7 @@ LDA MovingPlatform_CurrentIndex			;ran through all platforms?
 CMP #$06					;
 BEQ CODE_D365					;begone then
 TAX						;
-LDY DATA_C2CC,X					;platform's OAM slots
+LDY MovingPlatform_OAMSlots_C2CC,X		;platform's OAM slots
 LDA OAM_Y,Y					;
 CMP #$FF					;is it offscreen?
 BEQ CODE_D34E					;why bother then
@@ -4317,15 +4352,15 @@ BEQ CODE_D710					;moving left
 
 ;stationary
 CODE_D6E8:  
-LDA $A2						;i think this is for animation timing
+LDA Hammer_AnimationFrameCounter		;rotate this counter
 ASL A						;
-STA $A2						;
+STA Hammer_AnimationFrameCounter		;the bit has been cleared
 BEQ CODE_D6F2					;
 JMP CODE_D753					;don't animate
 
 CODE_D6F2:  
-LDA #$20                 
-STA $A2						;I have yet to figure out how this works
+LDA #%00100000					;
+STA Hammer_AnimationFrameCounter		;will activate after 3 frames
 
 ;animate moving w/ hammer
 LDA Hammer_JumpmanFrame
@@ -4397,7 +4432,7 @@ STA Hammer_JumpmanFrame				;
 CODE_D753:
 LDX Hammer_JumpmanFrame				;get animation frame
 DEX						;
-LDA DATA_C1A2,X					;from this beautiful little table              
+LDA Jumpman_HammerWalkingAnimFrames_C1A2,X	;from this beautiful little table              
 JSR CODE_F070					;draw frame
 
 LDA Hammer_JumpmanFrame				;place hammer according to frame (hammer up or down)
@@ -4564,7 +4599,7 @@ SEC						;
 SBC #$01					;
 ASL A						;
 TAX						;
-LDA Jumpman_CurrentPlatformIndex			;
+LDA Jumpman_CurrentPlatformIndex		;
 CMP DATA_C1A8,X					;yes on the platform
 BEQ CODE_D849					;
 INX						;
@@ -5126,7 +5161,7 @@ RTS						;
 CODE_DB00:
 LDA #%01010101					;every other frame (for the entity's frame counter)
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
-BNE CODE_DB21					;since the entity's frame counter was set to 0, first frame it won't trigger this, it'll initi its position to the side and make kong display his frame
+BNE CODE_DB21					;since the entity's frame counter was set to 0, first frame it won't trigger this, it'll init its position to the side and make kong display his frame
 
 JSR GetBarrelOAM_EFD5				;
 
@@ -5727,10 +5762,10 @@ INX						;
 INX						;(I made it so it's OAM_X but also added -3, to make the code clearer that we're modifying x-pos here, while preserving the original address)
 
 LDA $07						;unused barrel pattern?
-CMP #$02					;
-BNE CODE_DE36					;
+CMP #Barrel_VertTossPattern_DiagonalRight	;
+BNE CODE_DE36					;(yes, it is)
 
-INC OAM_X-3,X					;\untriggered (move to the right 1 pixel)
+INC OAM_X-3,X					;\just move to the right
 JMP CODE_DE56					;/
 
 CODE_DE36:
@@ -5795,7 +5830,7 @@ RTS						;
 ;accelerate down at certain points (likely after it bounced off the platform (only if it's moving straight down without left/right movement)
 CODE_DE86:
 LDA $07						;left/right movement?
-CMP #$01					;if so, don't care
+CMP #Barrel_VertTossPattern_StraightDown	;if so, don't care
 BNE RETURN_DEA4					;
 
 LDY #$00					;
@@ -7767,7 +7802,7 @@ DEC Jumpman_OAM_Y+8				;|
 DEC Jumpman_OAM_Y+12				;/
 
 CODE_E86A:
-LDY DATA_C2CC,X					;get proper OAM slot for each platform 
+LDY MovingPlatform_OAMSlots_C2CC,X		;get proper OAM slot for each platform 
 LDA OAM_Y,Y					;
 CMP #$FF					;
 BEQ CODE_E8A4					;if offscreen, next platform
@@ -7823,7 +7858,7 @@ INC Jumpman_OAM_Y+8				;|
 INC Jumpman_OAM_Y+12				;/
 
 CODE_E8C4:
-LDY DATA_C2CC,X					;
+LDY MovingPlatform_OAMSlots_C2CC,X		;
 LDA OAM_Y,Y					;
 CMP #$FF					;id the platform is offscreen, don't do things
 BEQ CODE_E8FC					;
@@ -7885,7 +7920,7 @@ CMP #$03					;check only 3 platforms that move up
 BEQ RETURN_E967					;when all checked, end
 TAX						;
 
-LDY DATA_C2CC,X					;
+LDY MovingPlatform_OAMSlots_C2CC,X		;
 LDA OAM_Y,Y					;
 CMP #$FF					;if the platform is offscreen, bring it back on screen
 BEQ CODE_E92E					;
@@ -7916,7 +7951,7 @@ CMP #$06					;
 BEQ RETURN_E967					;
 TAX						;
 
-LDY DATA_C2CC,X					;
+LDY MovingPlatform_OAMSlots_C2CC,X		;
 LDA OAM_Y,Y					;offscreen? plz come back i'm begging you i'm literally shaking and crying rn
 CMP #$FF					;
 BEQ CODE_E95B					;
@@ -8115,19 +8150,18 @@ RETURN_EA5E:
 RTS						;
 
 ;pauling's animation handling
-;HandlePauline_EA5F:
-CODE_EA5F:
+HandlePauline_EA5F:
 LDA Timer_PaulineAnimation			;if her animation timer is up
 BEQ CODE_EA64					;
 RTS						;maybe update
 
 CODE_EA64:
-LDA #$08                 
-STA $0A
-     
-LDA #$00                 
-STA $0B                  
-JSR CODE_EAA1					;update pauline every some frames...
+LDA #%00001000					;
+STA $0A						;
+
+LDA #%00000000					;
+STA $0B						;
+JSR CODE_EAA1					;every 16 frames, will update the animation
 BNE CODE_EA72					;
 RTS						;
 
@@ -8143,13 +8177,13 @@ CMP #PaulineBody_GFXFrame_Frame2		;2?
 BEQ CODE_EA88					;yes, change to frame 1
 
 INC Pauline_AnimationCount			;count animation
- 
+
 LDA #PaulineBody_GFXFrame_Frame2		;
 JMP CODE_EA8A					;
 
 CODE_EA88:
 LDA #PaulineBody_GFXFrame_Frame1		;
-  
+
 CODE_EA8A:
 JSR SpriteDrawingPREP_StoreTile_EAD4		;update pauline's body
 
@@ -8169,68 +8203,77 @@ STA Timer_PaulineAnimation			;
 RETURN_EAA0:
 RTS						;
 
+;it's the same as all the previous bitwise timing routines, but this time it's for Pauline
+;uses bitwise check for which frame to update the Pauline's animation
+;input:
+;$0A - timing for the first 8 bits
+;$0B - timing for the last 8 bits
+;Example of how it works:
+;$0A = $88 - %10001000
+;$0B = $88 - %10001000
+;$88 = 0 - checks bit 0 of $0A - don't run the routine
+;$88 = 8 - checks bit 0 of $0B - don't run the routine
+;$88 = 3 - checks bit 3 of $0A - run the routine
+;and so on
+
 CODE_EAA1:
-INC $B8                  
-LDA $B8                  
-BMI CODE_EAAE                
-CMP #$10                 
-BCS CODE_EAAE    
-JMP CODE_EAB2
-  
+INC Pauline_TimingCounter			;next bit to check
+LDA Pauline_TimingCounter			;
+BMI CODE_EAAE					;only positivity is accepted
+CMP #$10					;bit 16 doesn't exist - reset back to bit 0
+BCS CODE_EAAE					;
+JMP CODE_EAB2					;
+
 CODE_EAAE:
-LDA #$00                 
-STA $B8
-  
+LDA #$00					;start checking from bit 0 again
+STA Pauline_TimingCounter			;
+
 CODE_EAB2:
-CMP #$08                 
-BCS CODE_EABF                
-TAX                      
-LDA DATA_C1BC,X              
-AND $0A                  
-JMP CODE_EAC8
-  
+CMP #$08					;bit 8?
+BCS CODE_EABF					;check the other address containing bits
+TAX						;
+LDA DATA_C1BC,X					;
+AND $0A						;check bits from $0A
+JMP CODE_EAC8					;
+
 CODE_EABF:
-SEC                      
-SBC #$08                 
-TAX                      
-LDA DATA_C1BC,X              
-AND $0B
-  
+SEC						;-8 to get proper index
+SBC #$08					;
+TAX						;
+LDA DATA_C1BC,X					;
+AND $0B						;check bits from B
+
 CODE_EAC8:
 If Version = JP
-BEQ JP_CODE_EAE3
+  BEQ JP_CODE_EAE3				;
 else
-BEQ RETURN_EACC
+  BEQ RETURN_EACC				;bit clear - output 0
 endif
 
-LDA #$01
+LDA #$01					;output 1 and run whatever's after this (in this case, it's pauline's animating)
 
 If Version = JP
 JP_CODE_EAE3:
-STA $0C
+  STA $0C					;optimized in further revisions
 endif
 
 RETURN_EACC:
-RTS                      
+RTS						;
 
-;CODE_EACD:
 SpriteDrawingPREP_JumpmanOAM_EACD:
 LDA #<Jumpman_OAM_Y				;get Jumpmans OAM sprite tile low byte for sprite update (indirect adressing)
 STA $04						;
 
-;CODE_EAD1:
 SpriteDrawingPREP_Draw16x16_EAD1:		;pointless label, can just use JSR SpriteDrawingPREP_Draw16x16_2_EAD6.
 JMP SpriteDrawingPREP_Draw16x16_2_EAD6		;
 
 ;prep routine for sprite drawing
 ;A - first sprite tile to draw
 
-;CODE_EAD4
 SpriteDrawingPREP_StoreTile_EAD4:
 STA $02						;store tile
 
-;CODE_EAD6:
-;this label isn't even used, only for pointless jump above
+;this label isn't even used, only for a pointless jump above
 SpriteDrawingPREP_Draw16x16_2_EAD6:
 LDA #$22					;2 rows and 2 columns
 STA $03						;
@@ -8258,7 +8301,6 @@ STA $01						;
 RTS						;
 
 ;same as above but for other entities
-;CODE_EAEC:
 EntityPosToScratch_EAEC:
 LDA OAM_X,X					;entity's x-pos
 STA $00						;
@@ -8294,124 +8336,127 @@ STA Score_UpdateFlag				;
 
 LDA PhaseNo					;
 TAX						;
-TAY
-DEX
+TAY						;
+DEX						;
 LDA DATA_C608,X					;get the VRAM of the kong's position (depending on the phase ofc)
-STA $00
+STA $00						;
 
 LDA #$20					;the high byte is consistent
-STA $01                  
-TYA                      
-CMP #$02					;check if phase value is less than 2 
+
+STA $01						;
+TYA						;
+CMP #Phase_25M+1				;check if phase value is less than 2 (which is only 25M)
 BMI CODE_EB54					;can toss barrels and stuff and we need to animate that
 
 ;animate idle DK hitting his chest
 
-LDA $44						;DK animation???
+LDA Timer_KongAnimation				;
 BEQ CODE_EB4F					;restore the timer if at zero
 
 CODE_EB2B:
-CMP #$13                 
-BNE CODE_EB32                
-JMP CODE_EB85
+CMP #$13					;various timings
+BNE CODE_EB32					;
+JMP CODE_EB85					;show left fist hitting his chest
 
 CODE_EB32:
-CMP #$0F                 
-BNE CODE_EB39                
-JMP CODE_EB8E
-  
+CMP #$0F					;
+BNE CODE_EB39					;
+JMP CODE_EB8E					;now show right fist hitting his chest
+
 CODE_EB39:
-CMP #$0B                 
-BNE CODE_EB40                
-JMP CODE_EB85
+CMP #$0B					;alternates like that
+BNE CODE_EB40					;
+JMP CODE_EB85					;left hook!
 
 CODE_EB40:
-CMP #$08                 
-BNE CODE_EB47                
-JMP CODE_EB8E
+CMP #$08					;
+BNE CODE_EB47					;
+JMP CODE_EB8E					;right hook!
 
-CODE_EB47:  
-CMP #$04
-BNE RETURN_EB4E
-JSR CODE_EBA6
+CODE_EB47:
+CMP #$04					;
+BNE RETURN_EB4E					;stop chest hitting animation at this frame
+
+JSR CODE_EBA6					;show Donkey's normal pose
 
 RETURN_EB4E:
-RTS
-  
+RTS						;
+
 CODE_EB4F:
-LDA #$25                 
-STA $44                  
-RTS
-  
+LDA #$25					;
+STA Timer_KongAnimation				;chest hitting frequency
+RTS						;
+
+;animate barrel tossing and everything
 CODE_EB54:
-LDA $36                  
-CMP #$18                 
-BEQ CODE_EB74                
-CMP #$00
-BEQ CODE_EB7B
+LDA Timer_EntitySpawn				;
+CMP #$18					;
+BEQ CODE_EB74					;if at this point in time, show him picking up a barrel
+CMP #$00					;
+BEQ CODE_EB7B					;timer ran out? he'll continue his chest hit business
 
 LDA Kong_TossToTheSideFlag			;if donkey should show "toss to the side" frame
 BEQ CODE_EB6F					;NO???
 
 JSR CODE_EBA1					;actually, yes
 
-LDA #$00                 
+LDA #$00					;
 STA Kong_TossToTheSideFlag			;play once
 
-LDA #$1A                 
-STA $44
+LDA #$1A					;after which, it'll perform the chest hit animation like normal
+STA Timer_KongAnimation				;
 
-CODE_EB6F:  
-LDA $44                  
-JMP CODE_EB2B
-  
+CODE_EB6F:
+LDA Timer_KongAnimation				;animate chest hitting
+JMP CODE_EB2B					;
+
 CODE_EB74:
-LDA #$30                 
-STA $44                  
-JMP CODE_EB9C
+LDA #$30					;
+STA Timer_KongAnimation				;
+JMP CODE_EB9C					;
 
-CODE_EB7B:  
-LDA #$1A                 
-STA $44                  
-JSR CODE_EB97                
-JMP CODE_EB2B
+CODE_EB7B:
+LDA #$1A					;will start hitting his chest soon enough
+STA Timer_KongAnimation				;
+JSR CODE_EB97					;holding barrel gfx
+JMP CODE_EB2B					;...then it jumps back to timer checks which won't do anything.
 
 ;various inputs for CODE_C815, which is kong related (basically load various graphical frames for donkey)
 CODE_EB85:
-LDA #Sound_Effect_Hit
-STA Sound_Effect
-  
+LDA #Sound_Effect_Hit				;sound effect when DK hits his chest.
+STA Sound_Effect				;
+
 CODE_EB89:
-LDA #$40                 
-JMP CODE_EBA8
+LDA #$40					;
+JMP CODE_EBA8					;show DK's "hitting chest, right hand" frame
 
 CODE_EB8E:
-LDA #Sound_Effect_Hit
-STA Sound_Effect
+LDA #Sound_Effect_Hit				;Doesn't it hurt to hit his chest every so often?
+STA Sound_Effect				;probably not, but still
 
 CODE_EB92:
-LDA #$42
-JMP CODE_EBA8
+LDA #$42					;
+JMP CODE_EBA8					;show DK's "hitting chest, left hand" frame
 
 CODE_EB97:
-LDA #$44                 
-JMP CODE_EBA8
+LDA #$44					;show DK's "holding barrel" frame
+JMP CODE_EBA8					;
 
 CODE_EB9C:
-LDA #$3E                 
-JMP CODE_EBA8
+LDA #$3E					;show DK's "picking up barrel" frame
+JMP CODE_EBA8					;
 
-;show "toss the barrel to the side" frame
 CODE_EBA1:
-LDA #$00					;
+LDA #$00					;show DK's "toss the barrel to the side" frame
 JMP CODE_EBA8					;
 
 CODE_EBA6:
-LDA #$02
+LDA #$02					;show DK's "default" frame
 
 CODE_EBA8:
-JSR CODE_C815
-DEC $44
+JSR CODE_C815					;load correct pointer for DK's image and then buffer it
+
+DEC Timer_KongAnimation				;immediatly move on so it doesn't redraw the same frame for several frames
 
 LDA Score_UpdateFlag				;stuffed kong's image into a buffer, no score update for this frame
 ORA #$10					;
@@ -8727,7 +8772,7 @@ JSR CODE_C847					;
 
 JSR CODE_EFEF					;check collision
 BNE CODE_ED57					;success!
- 
+
 INC FlameEnemy_CurrentIndex			;
 LDA FlameEnemy_CurrentIndex			;
 LDX PhaseNo					;
@@ -8799,7 +8844,7 @@ DEX						;
 CMP DATA_C1F6,X					;all flame enemies loop
 BEQ CODE_EDB5					;move on to hammer
 JMP LOOP_ED93					;
-  
+
 CODE_EDAD:
 JSR CODE_EF51					;if player held a hammer, remove it
 
@@ -8916,7 +8961,7 @@ BEQ CODE_EE51					;if animation has ended, remove all traces
 
 LDX Hammer_DestroyingEnemy			;
 DEX						;
-LDA DATA_C1EC,X					;show animation
+LDA EnemyDestructionAnimationFrames_C1EC,X	;show animation
 STA $02						;
 
 JSR CODE_EADB					;draw tiles
@@ -9284,7 +9329,7 @@ STA HitboxB_YPos_Top				;y-pos
 JSR CODE_F062					;
 STA HitboxB_XPos_Right				;x-pos + hitbox width
 
-JSR CODE_F069                
+JSR CODE_F069					;
 STA HitboxB_YPos_Bottom				;y-pos + hitbox height
 
 LDA HitboxB_XPos_Left				;hitbox B x-pos minus hitbox A x-pos
@@ -9694,8 +9739,8 @@ LDA #$00
 STA VRAMDrawPosReg				;it's $2000
 
 LDX #$04					;
-LDY #$00                 
-LDA #$24					;fill entire screen with tile 24
+LDY #$00					;
+LDA #Tile_Empty					;fill entire screen with tile EMPTY
 
 LOOP_F1CE: 
 STA DrawRegister				;
@@ -9851,7 +9896,7 @@ BCC CODE_F29A					;
 ;!UNUSED
 ;draw empty tiles instead of zeros, probably supposed to be for high digits, but it's unfinished and unused
 
-LDA #$24
+LDA #Tile_Empty
 ;----------------------------------------------
 
 CODE_F29A:
@@ -9877,7 +9922,7 @@ BCC CODE_F2B4					;
 ;----------------------------------------------
 ;!UNUSED
 ;Similar to the same line from above. unsure why it's here...
-LDA #$24
+LDA #Tile_Empty
 ;----------------------------------------------
 
 CODE_F2B4:
@@ -10238,7 +10283,6 @@ RTS						;
 ;low nibble bit 3 - run through 2 player scores (if not set, can be used for single player games)
 ;in this game only input is #$F9 which means TOP score offset is 0, and player score offset is 1 (to take 2 players into accounts, since it uses DEXes for next player check) + bit 3 set for 2 players
 UpdateTOPScore_F435:
-;CODE_F435:
 LDA #$00					;not quite sure what this is for yet
 STA $04						;
 CLC						;for next ADC
@@ -11675,7 +11719,7 @@ BCS CODE_FC62					;
 LSR Sound_Effect2				;$08 - movement sound
 BCS CODE_FC51					;
 
-CODE_FC16:   
+CODE_FC16:
 JMP CODE_FC90					;otherwise handle hit sound (Sound_Effect_Hit)
   
 CODE_FC19:
@@ -12102,7 +12146,7 @@ db $09,$0E,$13,$18,$1D,$22,$27,$2C,$31
 ;1 byte - length byte offset
 ;2 bytes - sound data address
 ;1 byte - triangle data offset
-;1 byte - square 1 data offse
+;1 byte - square 1 data offset
 
 db $00,<DATA_FE8F,>DATA_FE8F,<(DATA_FEAA-DATA_FE8F),$00
 db $08,<DATA_FEB0,>DATA_FEB0,$00,<(DATA_FEBC-DATA_FEB0)

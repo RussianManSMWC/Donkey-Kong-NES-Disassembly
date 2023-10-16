@@ -56,8 +56,9 @@ Timer_FlameEnemySpawn = $40
 Timer_Score = $41				;2 bytes, show score sprites for a little bit
 ;$42 - unused
 Timer_Transition = $43				;common timer used for changing game states, like game over, phase init, etc. (sorta timer though it's strangely handled)
-Timer_ForVertBarrelToss = $43				;another use for this timer is in 25M, when it runs out, the kong can throw a vertical barrel again
+Timer_ForVertBarrelToss = $43			;another use for this timer is in 25M, when it runs out, the kong can throw a vertical barrel again
 Timer_Demo = $44				;timer that ticks at the title screen, when 0 demo gameplay starts. (TO-DO: used for something else as well?)
+Timer_KongAnimation = $44			;
 Timer_BonusScoreDecrease = $45			;timer that decreases bonus score by 100.
 
 ;hitbox shenanigans
@@ -133,7 +134,7 @@ Jumpman_AirMoveFlag = $9E			;if set, move player horizontally when jumping (upda
 Hammer_JumpmanFrame = $9F			;graphical frame index when jumpman's swinging the hammer
 Jumpman_HeldHammerIndex = $A0			;stores index of hammer that is currently being held (0 - not holding anything)
 Jumpman_CurrentLadderXPos = $A1			;X-position of the ladder the jumpman's currently climbing
-;$A2 - hammer animation related
+Hammer_AnimationFrameCounter = $A2		;works on a bitwise basis, when it's at 0, Jumpman and hammer will update the appearance
 
 Barrel_LadderYDestination = $A3			;when goes down the ladder checks for this value to see where the ladder ends and it should start moving like normal again
 
@@ -144,7 +145,7 @@ FlameEnemy_State = $AF				;actual enemies
 FlameEnemy_Direction = $B3			;surprizingly underutilized, only used when standing in place (direction is also FlameEnemy_State)
 
 Pauline_AnimationCount = $B7			;used to change graphic frame, counts untill specified value after which stops animating for a bit
-
+Pauline_TimingCounter = $B8
 FlameEnemy_LadderBoundary = $B9			;each flame enemy reserves a pair of bytes - first one stores the Y-position of the upper ladder boundary (where the flame stops climbing, potentially to be prevented from climbing too high), and the second is the ladder's bottom boundary
 
 Jumpman_ActingFlag = $BE			;set when Jumpman is performing some action (movement, dying, etc.). This is only used to check if Jumpman can pick up bonus items/activate bolts (probably for performace reasons).
@@ -209,22 +210,21 @@ Barrel_VertTossLandingXPos = $042B		;stores barrel's x-position when it landes f
 
 ;these are used by jumpman and phase 2 springboards (only those use true gravity)
 Entity_GravityInitFlag = $042C			;initializes downward y-speed
-Jumpman_GravityInitFlag = $042C
-Springboard_GravityInitFlag = $042E
+Jumpman_GravityInitFlag = Entity_GravityInitFlag
+Springboard_GravityInitFlag = Entity_GravityInitFlag+2
 
-Entity_SubYPos = $042D
+Entity_SubYPos = $042D				;sub-pixel nonsense
 ;YPos is $01
 Entity_DownwardSubSpeed = $0435
 Entity_DownwardSpeed = $0436
 
-Entity_UpwardSubSpeed = $043D
-Jumpman_UpwardSubSpeed = $043D
-Jumpman_JumpSpeed = $043E			;how high jumpman goes when jumping. (every X pixels)
-Springboard_UpwardSubSpeed = $043F
-
+Entity_UpwardSubSpeed = $043D			;units that are less than a full pixel (general)
 Entity_UpwardSpeed = $043E
-Jumpman_UpwardSpeed = $043E
-Springboard_UpwardSpeed = $0440
+
+Jumpman_UpwardSubSpeed = Entity_UpwardSubSpeed
+Jumpman_UpwardSpeed = Entity_UpwardSpeed	;how high jumpman goes when jumping. (X pixels)
+Springboard_UpwardSubSpeed = Entity_UpwardSubSpeed+2
+Springboard_UpwardSpeed = Entity_UpwardSpeed+2
 
 ;springboards from phase 3
 Springboard_CurrentIndex = $0445
@@ -383,6 +383,7 @@ Input_AllDirectional = Input_Up|Input_Down|Input_Right|Input_Left
 BonusScoreCounter_WhenHurryUp = $10		;how many hundreds should it hit to start playing hutty up music
 
 Jumpman_InitLives = 3				;the amount of lives given upon starting a new game
+Jumpman_JumpSubYSpeed = $58			;initial jumping speed
 
 ;Demo mode only, used for jumping (doesn't use controller input)
 Demo_JumpCommand = $05
