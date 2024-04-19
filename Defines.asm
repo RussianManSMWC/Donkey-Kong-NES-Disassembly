@@ -5,9 +5,12 @@
 
 ;$00-$0C - common scratch ram for various purposes
 ;Most common uses of the scratch RAM. other specific uses are local
-TEMP_XPosition = $00
-TEMP_YPosition = $01
-TEMP_EntitySlot = $04
+TEMP_EntityXPosition = $00
+TEMP_EntityYPosition = $01
+TEMP_EntityOAMTile = $02			;first tile from which it'll draw the rest
+TEMP_EntityOAMProp = $02			;a far less common use
+TEMP_EntityGFXSize = $03			;low nibble - amount of tiles on the same row, high nibble - amount of rows placed on top of each other
+TEMP_EntityOAMSlot = $04
 
 ;$0D-0E - Unused
 ;$0F - used for multiple purposes, listed below
@@ -30,7 +33,7 @@ ControllerInput_Player2Previous = $17		;/
 
 RNG_Value = $18					;8 bytes (18-1F). Some of these aren't used.
 
-Score_InvertOperandFlag = $24			;alternates every 4 bytes for each counter, when there's an overflow/underflow, the operation (addition or substraction) will be reverted to prevent that (not entirely sure how it works though)
+Score_InvertOperandFlag = $20			;alternates every 4 bytes for each counter, when there's an overflow/underflow, the operation (addition or substraction) will be reverted to prevent that (not entirely sure how it works though)
 ScoreDisplay_Top = $21				;\3 bytes, decimal (21-23).
 ScoreDisplay_Player1 = $25			;|(25-27)
 ScoreDisplay_Player2 = $29			;/(29-2B)
@@ -178,13 +181,21 @@ FlameEnemy_LadderRestTime = $E8			;used for ladder movement, to make it move eve
 ;EC - flame enemy...
 FlameEnemy_FollowDirection = $EC		;used to deternmine its movement direction when it randomly decides to chase the player
 
-Sound_EffectPreserved = $F0			;saves Sound_Effect or Sound_Effect2 value to keep playing said sound
-Sound_FanfareNoiseTrackOffset = $F3
+Sound_Effect2_Current = $F0			;sound effect2 that is currently playing
+Sound_Effect2_Length = $F1			;ticks down and controls the square's sweep bits
+Sound_Square_Frequency = $F2			;for PlayerDead, this acts as an index for frequencies, rather than an actual frequency value
+Sound_Square_SweepIndex = $F2			;used by Jump SFX
+Sound_FanfareSquare2TrackOffset = $F3
+;$F4 - unused
+Sound_Effect_Length = $F5			;\these are used for Sound_Effect (utilize triangle channel)
+Sound_Triangle_Frequency = $F6			;/
+
 Sound_MusicDataPointer = $F5			;2 bytes, for music
-Sound_SoundDataPointer = $F7			;2 bytes, indirect addressing (for fanfares, maaaaybe for other sounds idk)
+Sound_SoundDataPointer = $F7			;2 bytes, indirect addressing (for fanfares)
+
 Sound_FanfareTriangleTrackOffset = $F9		;for fanfares that use triangle (00 - no triangle)
 Sound_FanfareSquareTrackOffset = $FA		;for fanfares that use square (00 - no square)
-Sound_CurrentFanfareID = $FB			;bit to value (e.g. bit 3 set = $03)
+Sound_CurrentFanfareID = $FB			;bit index (e.g. bit 3 set = $03)
 Sound_Music = $FC				;simple beeps and boops to accompany you during gameplay (or not).
 Sound_Fanfare = $FD				;holds value for various jingles and sound effects, like title screen theme, score, pause and etc.
 Sound_Effect = $FE
@@ -266,16 +277,28 @@ TitleScreen_DemoCount = $0518			;how many times the demo must play for music to 
 ;Sound addressess
 Sound_MusicHammerBackup = $0519			;used to save music value that played before picking up a hammer
 
-;$051A - $0580 - unused
+;$051A-$067F - unused
 
-Sound_TriangleTrackOffset = $0680		;or a triangle phase/state/beat, w/e you wanna call that (this is for music btw.)
+Sound_MusicTriangleTrackOffset = $0680		;or a triangle phase/state/beat, w/e you wanna call that (this is for music btw.)
+;$0681-$068C - unused
 Sound_NoteLengthOffset = $068D
-Sound_SquareTimerSaved = $0691			;this address is used to store to Sound_SquareTimer, this can change for the next beat or stay the same for the same timing
-Sound_NoiseTimer = $0695
-Sound_SquareTimer = $0696
+;$068E-$0690 - unused
+Sound_SquareNoteLengthSaved = $0691		;this address is used to store to Sound_SquareTimer, this can change for the next beat or stay the same for the same timing
+;$0692-$0694 - unused
+Sound_Square2NoteLength = $0695
+Sound_SquareNoteLength = $0696
 ;$0697 is unused
-Sound_TriangleTimer = $0698			;time between each triangle beat
-Sound_MusicMirror = $06A3			;a copy of Sound_Music used to tell if we're playing the same song and if we should initialize music-related stuff (like triangle channel)
+Sound_TriangleNoteLength = $0698		;time between each triangle beat
+;$0699-$06A0 - unused
+Sound_Effect_Current = $06A1			;tells what Sound_Effect is currently being played
+;$06A2 is unused
+Sound_Music_Current = $06A3			;tells what music is currently being played
+;$06A4 is unused
+Sound_HitSFX_Length = $06A5			;exclusively used by Sound_Effect_Hit to distinguish it from other SFX
+;$06A6-$06EF - unused
+Sound_StepSFX_Frequency = $06F0
+Sound_StepSFX_FrequencyMode = $06F1		;0 - frequency goes up with each step, 1 - frequency goes down with each step
+;$06F2-$07FF - unused
 
 ;OAM base ram addresses
 OAM_Y = $0200
@@ -345,11 +368,40 @@ CameraPositionReg = $2005
 VRAMDrawPosReg = $2006				;first two writes set VRAM position to start drawing at (also, camera position)
 DrawRegister = $2007				;used to draw tiles, change palettes and attributes (maybe rename to a more general "UpdateRegister")
 
+;this applies to all channels (except DMC (Delta Modulation Channel))
+APU_ChannelFrequency = $4002
+APU_ChannelFrequencyHigh = $4003
+
+APU_Square1DutyAndVolume = $4000		;bitwise DDLc vvvv, DD - Duty cycle (pulse width, the available values are 12.5%, 25%, 50% and 25% negated (basically the same?)), L - length counter halt (play sound indefinitely), c - constant volume/envelope (if clear, the volume goes down when the sound ends), v - volume bits, as you can imagine the higher it is, the louder it gets
+APU_Square1Sweep = $4001			;makes the sound "sweep" up or down its frequency (bitwise: EPPP NSSS, E - enable sweep, PPP - the divider's period (P+1 half-frames), N - negate flag, if clear, will sweep toward lower frequency, set - sweep toward higher frequency, SSS = shift count)
+APU_Square1Frequency = $4002
+APU_Square1FrequencyHigh = $4003		;first 3 bits are an extension to the above frequency thing, the rest are "Length counter load" bits, how long the sound will play (if L bit from APU_Square1DutyAndVolume isn't set)
+
+APU_Square2DutyAndVolume = $4004		;same for the second square channel
+APU_Square2Sweep = $4005
+APU_Square2Frequency = $4006
+APU_Square2FrequencyHigh = $4007
+
+APU_TriangleLinearCounter = $4008		;bit 7 halts linear counter for constant noise, otherwise the channel will silence itself after playing the sound, the rest of the bits are how long the sound will play, basically like length counter load bits, but more flexible? but also doesn't allow for longer timing
+;$4009 is unused for triangle
+APU_TriangleFrequency = $400A			;think of it like a pitch control/how "long" the triangle is. the lower value is, the higher pitch it'll be
+APU_TriangleFrequencyHigh = $400B		;first 3 bits are an extension to the above "pitch" thing, the rest are how long the sound will play  (in the context of the triangle channel, this is basically redundant, as there's already timer bits at APU_TriangleLinearCounter, the channel will be silenced once either reaches 0)
+
+APU_NoiseVolume = $400C				;--LC VVVV, L - length counter halt (play the sound indefinitely if set), c - constant volume/envelope (if clear, the volume goes down when the sound ends), V - volume
+;$400D is unused for noise
+APU_NoiseLoop = $400E				;bit 7 enables the loop, the bits 0 through 3 are the noise's period
+APU_NoiseLength = $400F				;same length counter load bits as previous channels, if length counter halt bit is clear, the noise will play for a certain amount of time
+
+APU_DMCFrequency = $4010
+APU_DMCLoadCounter = $4011			;like a timer for how long it runs, I guess? Like linear counter for other channels.... I THINK??? QUESTION MARK????????
+APU_DMCSampleAddress = $4012			;where in ROM is the sample we're playing, between $C000 to $FFFF
+APU_DMCSampleLength = $4013
+
 OAMDMA = $4014					;upload $100 bytes
 
-APU_SoundChannels = $4015			;
-ControllerReg = $4016				;$4016 - First controller, $4017 - Second controller
-APU_FrameCounter = $4017			;not very useful, just disables IRQ
+APU_SoundChannels = $4015			;used to enable channels (also, if read, returns some bit stuff, but it's not relevant here)
+ControllerReg = $4016				;$4016 - First controller, $4017 (read) - Second controller
+APU_FrameCounter = $4017			;(write) bit 6 can enable IRQ and bit 7 changes step mode (4 or 5 step sequence for envelope/sweep/length of sound channels (except DMC)). IRQ only triggers at the end of the 4-step sequence (bit 7 must be clear).
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Constant defines
@@ -405,7 +457,7 @@ Sound_Music_25M = $02
 Sound_Music_100M = $10
 Sound_Music_HurryUp = $20
 Sound_Music_Hammer = $40
-;$80 is a hammer theme with 3 repeating sounds at the beginning (unused)
+;$80 doesn't exist, it'll use an erroneous offset, which places it in a part of hammer theme
 
 ;$FD
 Sound_Fanfare_GameStart = $01			;when pressing start at the title screen
@@ -424,10 +476,10 @@ Sound_Effect_SpringBounce = $02			;/
 Sound_Effect_Hit = $80				;donkey kong chest hit sound and plays when dying (and when the barrel hits oil)
 
 ;$FF
-Sound_Effect2_Dead = $01
+Sound_Effect2_PlayerDead = $01
 Sound_Effect2_EnemyDestruct = $02
 Sound_Effect2_Jump = $04
-Sound_Effect2_Movement = $08			;when the player moves
+Sound_Effect2_Step = $08			;when the player moves
 ;other bits are unused
 
 ;Various OAM-related defines. OAM slots are in decimal (from 0 to 63).
@@ -446,6 +498,14 @@ Jumpman_GFXFrame_Stand = $04
 Jumpman_GFXFrame_Walk1 = $08
 Jumpman_GFXFrame_Jumping = $28
 Jumpman_GFXFrame_Landing = $2C
+
+;indexes for below frames (see Jumpman_HammerWalkingAnimFrames_C1A2 table)
+Hammer_JumpmanFrame_Walk2_HammerUp = $01
+Hammer_JumpmanFrame_Stand_HammerUp = $02
+Hammer_JumpmanFrame_Walk1_HammerUp = $03
+Hammer_JumpmanFrame_Walk2_HammerDown = $04
+Hammer_JumpmanFrame_Stand_HammerDown = $05
+Hammer_JumpmanFrame_Walk1_HammerDown = $06
 
 Jumpman_GFXFrame_Walk2_HammerUp = $0C
 Jumpman_GFXFrame_Walk2_HammerDown = $10

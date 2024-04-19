@@ -104,7 +104,7 @@ db $30,$D0,$FF,$FF				;after this it'll start taking garbage values, which shoul
 DATA_C03C:
 dw Tilemap_DonkeyKong_SideToss_C63E		;\pointers to Kong's frames. this one is "toss to the side"
 dw Tilemap_DonkeyKong_Stationary_C657		;/this one is simply stationary Donkey (default pose)
-dw DATA_C6E1					;erase II if not in two player mode
+dw Tilemap_RemoveII_C6E1			;erase II if not in two player mode
 dw DATA_C760					;erase various tiles for ending (part 1)
 
 ;various table pointers for the ending (erase tiles, draw some), combined with a table from above
@@ -154,7 +154,7 @@ dw DATA_C1E7					;
 ;MORE Background Donkey Kong Tilemaps
 dw Tilemap_DonkeyKong_PickupBarrel_C60C		;
 dw Tilemap_DonkeyKong_HitChestLeftHand_C670	;\chest hitting frames
-dw Tilemap_DonkeyKong_HitChestRightHand_C689	;/Tilemap_DonkeyKong_HitChestRightHand_C689
+dw Tilemap_DonkeyKong_HitChestRightHand_C689	;/
 dw Tilemap_DonkeyKong_HoldingBarrel_C625
 ;-----------------------------------------------------
 
@@ -185,7 +185,7 @@ db $80,$28,$04,$00,$01,$FE			;the very last platform that marks the end of the l
 ;y-position of each platform (from highest point + 16 pixels), used to calculate platform index
 ;FF sets index to 7 (which is the lowest platform)
 ;Phase 1
-DATA_C0BC:
+Phase25MPlatformYPositions_C0BC:
 db $BC,$9E,$80,$62,$44,$28,$FF
 
 ;collision "dimensions" for platforms for 25M. first 4 values are for an extended part of the lowest platform, last 4 are for small bits
@@ -457,8 +457,7 @@ UNUSED_C203:
 db $01,$02,$03,$04
 
 ;bonus score values (hundreds)
-;InitialBONUSScore_C207:
-DATA_C207:
+InitialBONUSScore_C207:
 db $50,$60,$70,$80
 
 UNUSED_C20B:
@@ -489,7 +488,7 @@ db $66,$40,$10
 db $86,$28,$00
 db $FE
 
-DATA_C24C:
+Phase75MPlatformYPositions_C24C:
 db $B0,$78,$60,$40,$28,$FF
 
 ;hitboxes for 75M's platforms, only really contains widths
@@ -587,11 +586,8 @@ db $1E,$68,$08
 db $26,$40,$0C
 db $FE
 
-DATA_C300:
-db $B8,$90,$68,$40,$28
-
-UNUSED_C305:
-db $FF
+Phase100MPlatformYPositions_C300:
+db $B8,$90,$68,$40,$28,$FF
 
 ;all different platform hitboxes for 100M (again, only width matters)
 DATA_C306:
@@ -858,7 +854,7 @@ dw DATA_C316					;100M
 ;various ladder bottom hitboxes per phase
 DATA_C483:
 dw DATA_C10B
-dw DATA_C20C
+dw DATA_C20C					;placeholder
 dw DATA_C28D
 dw DATA_C341
 
@@ -869,12 +865,12 @@ dw DATA_C20C					;GUESS WHAT THIS MEANS
 dw DATA_C2A5
 dw DATA_C349
 
-;pointers to platform heights for each phase
-DATA_C493:
-dw DATA_C0BC
-dw DATA_C20C					;no phase 2. this is sadge
-dw DATA_C24C
-dw DATA_C300
+;pointers to platform heights (levels) for each phase
+StagePlatformYPositionPointers_C493:
+dw Phase25MPlatformYPositions_C0BC
+dw DATA_C20C					;no phase 2. this is sadge (not even a valid table)
+dw Phase75MPlatformYPositions_C24C
+dw Phase100MPlatformYPositions_C300
 
 ;skipped over 25M
 UNUSED_C49B:
@@ -891,18 +887,14 @@ DATA_C4A3:
 dw DATA_C2D8					;
 dw DATA_C37A					;
 
-;seems to be stage design data pointers
-DATA_C4A7:
-dw DATA_F55B					;phase 1
-
-UNUSED_C4A9:
-dw DATA_F8D9					;data pointer for cement factory phase. unfortunately, it was cut so no actual stage data left. it's place is occupied by title screen data.
-
-DATA_C4AB:
-dw DATA_F7CD					;
-dw DATA_F71C					;
-dw DATA_F8D9					;title screen (Tilemap_TitleScreen_F8D9)
-dw DATA_FA1B					;hud
+;level and not-so-level layouts
+ScreenLayoutData_C4A7:
+dw Layout_Phase25M_F55B				;phase 1
+dw Layout_TitleScreen_F8D9			;data pointer for cement factory phase. unfortunately, it was cut so no actual stage data left. it's place is occupied by title screen data.
+dw Layout_Phase75M_F7CD				;
+dw Layout_Phase100M_F71C			;
+dw Layout_TitleScreen_F8D9			;title screen (Tilemap_TitleScreen_F8D9)
+dw Layout_HUD_FA1B				;hud
 
 ;this data is used to initialize various entities, storing directly to their OAM slots
 ;Format: XYTRcOD
@@ -916,8 +908,7 @@ dw DATA_FA1B					;hud
 ;remove 6 sprite tiles starting from OAM offset E8, which is, by default, Pauline's head (so that means remove pauline, then reinitialize), X and Y-positions don't matter
 ;$FE acts as a terminator for the initializer
 
-;Phase1_InitEntities_C4B3:
-DATA_C4B3:
+Phase25M_EntityInitData_C4B3:
 db $00,$00,$01,$06,PaulineHead_OAM_Slot*4,$04
 
 ;draw Pauline's head tiles
@@ -952,8 +943,7 @@ db $00,$00,$02,$02,Flame_OAM_Slot*4,$04
 
 db $FE						;no more init
 
-;Phase3_InitEntities_C4F6:
-DATA_C4F6:
+Phase75M_EntityInitData_C4F6:
 ;remove pauline
 db $00,$00,$01,$06,PaulineHead_OAM_Slot*4,$04
 
@@ -991,8 +981,7 @@ db $00,$00,$01,$16,$90,$04
 
 db $FE
 
-;Phase4_InitEntities_C569:
-DATA_C569:
+Phase100M_EntityInitData_C569:
 
 ;pauline as usual
 db $00,$00,$01,$06,PaulineHead_OAM_Slot*4,$04
@@ -1013,11 +1002,11 @@ db $00,$00,$02,$10,$10,$04
 db $FE
 
 ;pointer for various entity initializations (tables above) for each phase
-DATA_C5A6:
-dw DATA_C4B3
-dw DATA_C4F6					;y'know the drill by now.
-dw DATA_C4F6
-dw DATA_C569
+PhaseEntityInitPointers_C5A6:
+dw Phase25M_EntityInitData_C4B3
+dw Phase75M_EntityInitData_C4F6			;y'know the drill by now.
+dw Phase75M_EntityInitData_C4F6
+dw Phase100M_EntityInitData_C569
 
 ;unknown, maybe related with the table below?
 UNUSED_C5AE:
@@ -1200,7 +1189,7 @@ db $13
 db $16,$30,$37
 
 ;data for "Player X" screen.
-DATA_C6AA:
+Tilemap_PlayerScreen_C6AA:
 db $23,$DB					;set up attributes
 db $02|VRAMWriteCommand_Repeat
 db $A0
@@ -1218,13 +1207,13 @@ db VRAMWriteCommand_Stop
 
 ;data for "GAME OVER" message
 ;Attributes first
-DATA_C6C2:
+Tilemap_GameOver_C6C2:
 db $23,$E2
 db $04
 db $08,$0A,$0A,$02
 
 db $22,$0A
-db $0C|VRAMWriteCommand_Repeat
+db $0C|VRAMWriteCommand_Repeat			;lay some empty tile strips (so it looks like a proper message box, instead of simply injecting the message and creating cutoff)
 db $24
 
 ;" GAME  OVER "
@@ -1234,11 +1223,11 @@ db $24,$10,$0A,$16,$0E,$24,$24,$18,$1F,$0E,$1B,$24
 
 db $22,$4A
 db $0C|VRAMWriteCommand_Repeat
-db $24
+db $24						;one more strip
 
 db VRAMWriteCommand_Stop
 
-DATA_C6E1:
+Tilemap_RemoveII_C6E1:
 db $12						;1 row with 2 tiles
 db $24,$24					;two empty tiles to remove II
 
@@ -1497,29 +1486,28 @@ STA CameraPositionY          			;/
 JSR RemoveSpriteTiles_CBAE			;remove sprite tiles
 JMP DisableRenderAndClearScreen_CBB7		;clear screen
 
-;Get drawing pointer - used to get pointers for phase design and HUD.
-;Input: A - even index
-;GetDrawPointer_C807:
-CODE_C807:
+;get pointer for stage design/title screen/HUD, then draw it
+;Input: A - index for the layout, must be even
+DrawLayout_C807:
 TAX						;
-LDA DATA_C4A7,X					;set indirect addressing
+LDA ScreenLayoutData_C4A7,X			;set indirect addressing
 STA $00						;
 
-LDA DATA_C4A7+1,X				;
+LDA ScreenLayoutData_C4A7+1,X			;
 STA $01						;
 JMP UpdateScreen_F228				;draw or update something on screen
 
 ;this one uses buffer. used for palettes and kong updates and probably other stuff.
-;GetDrawPointerBuffer_C815:
-;additional input is $00-$01 - VRAM address from which the modifications are made (used in CODE_F2D7)
-CODE_C815:
+
+;additional input is $00-$01 - VRAM address from which the modifications are made (used in VRAMUpdateToBuffer_F2D7)
+GetVRAMUpdateToBuffer_C815:
 TAX						;
 LDA DATA_C03C,X					;
 STA $02						;
 
 LDA DATA_C03C+1,X				;
 STA $03						;
-JMP CODE_F2D7					;
+JMP VRAMUpdateToBuffer_F2D7			;
 
 ;routine used for ending to get data pointers for tile deletion & drawing (platform with Pauline 'n Jumpman)
 CODE_C823:
@@ -1605,7 +1593,7 @@ BNE CODE_C8C1					;do title screen-y things
 
 LDA GameControlFlag				;check if game isn't controllable yet
 BEQ CODE_C8D4					;
- 
+
 LDA Phase_CompleteFlag				;phase complete, do phase completion stuff
 BNE CODE_C8A5					;
 
@@ -1629,7 +1617,7 @@ STA GameControlFlag				;resume normal play
 LDA #$79					;timer for when the phase starts i think
 STA Timer_Transition				;
 JMP CODE_C8D7					;end NMI
-  
+
 CODE_C8C1:
 LDA Jumpman_Lives				;if Jumpman has some lives left, continue playing
 BNE CODE_C8CB					;
@@ -1637,11 +1625,11 @@ BNE CODE_C8CB					;
 JSR CODE_CA30					;game over (or demo end)
 JMP CODE_C8D7					;(almost) end NMI
 
-CODE_C8CB:  
+CODE_C8CB:
 JSR CODE_C8F3					;
-JSR HandleTimers_F4AC				;handle timers
+JSR HandleGlobalTimers_F4AC			;handle timers
 JMP CODE_C8D7					;
-  
+
 CODE_C8D4:
 JSR CODE_CAC9					;reached pauline!
 
@@ -1655,7 +1643,7 @@ STA $00						;|
 JSR CODE_F23C					;/
 
 DEC Score_UpdateFlag				;- 1 = 0 (don't trigger above check)
-  
+
 CODE_C8E8:
 LDA ControlMirror				;re-enable NMI
 EOR #$80					;
@@ -1693,7 +1681,7 @@ BNE CODE_C940					;check for controller input when on title screen
 JSR DisableRender_D19A				;disable render
 
 LDA #$08					;\
-JSR CODE_C807					;/draw title screen
+JSR DrawLayout_C807				;/draw title screen
 
 ;set cursor sprite for title screen
 LDA Cursor_YPosition				;Y-position
@@ -1786,7 +1774,7 @@ RTS						;
 CODE_C98A:
 STA Pause_HeldPressed				;
 
-LDX #$0A					;reset score  
+LDX #$0A					;reset score
 LDA #$00					;
 
 LOOP_C991:
@@ -1889,7 +1877,7 @@ STA Timer_Transition				;
 JMP RemoveSpriteTiles_CBAE			;no sprite tiles
 
 CODE_CA30:
-JSR HandleTimers_F4AC				;handle timers
+JSR HandleGlobalTimers_F4AC			;handle timers
 
 LDA Demo_Active					;if game over during demo, simply end it
 BNE CODE_CA4A					;
@@ -1924,7 +1912,7 @@ JMP RemoveSpriteTiles_CBAE			;no sprite tiles
 
 CODE_CA5F:
 DEC Timer_Transition				;
-JMP CODE_CBCA					;show PLAYER X if needed
+JMP ShowPlayerXScreen_CBCA			;show PLAYER I/PLAYER II string if needed
 
 CODE_CA64:  
 DEC Timer_Transition				;
@@ -2004,7 +1992,7 @@ BNE LOOP_CABB					;
 RTS						;
 
 CODE_CAC9:
-JSR HandleTimers_F4AC				;timers per usual
+JSR HandleGlobalTimers_F4AC			;timers per usual
 
 LDA PhaseNo					;if 25M, don't give bonus score
 CMP #Phase_25M					;for starting a new game. in case of looping, 100M's ending already handles bonus points
@@ -2037,7 +2025,7 @@ RTS						;
 CODE_CAE7:
 ;there's a minor error where the life counter displays the previous life counter value for a few frames before decreading life count by 1. kinda makes sense when you lose a life, but this is also applied to the start of the game, which is why you "lose a life" by starting a game, going from 3 to 2 lives
 LDA LostALifeFlag				;if didn't lose a life, well
-BEQ CODE_CAF6
+BEQ CODE_CAF6					;
 
 LDA #$00					;
 STA LostALifeFlag				;lost it once
@@ -2045,7 +2033,7 @@ STA LostALifeFlag				;lost it once
 DEC Jumpman_Lives				;decrease jumpman's life count
 JSR CODE_CBBD					;reflect the change in the life counter
 
-CODE_CAF6:  
+CODE_CAF6:
 JSR CODE_CC34					;score stuff (TOP score?)
 RTS						;
 
@@ -2087,7 +2075,7 @@ if Version = JP
 JP_CODE_CB28:
   DEC Timer_Transition				;
   JSR ClearScreenAndRemoveSpriteTiles_CA53	;
-  JMP JP_CODE_CBC6				;actually more optimal than REV1? color me surprised (show player X string for 2P mode)
+  JMP JP_ShowPlayerXScreen_CBC6			;actually more optimal than REV1? color me surprised (show player X string for 2P mode)
 
 JP_CODE_CB30:
   JSR JP_DisableRenderAndClearScreen_CBB3	;no tiles on screen... and no screen on screen because no render
@@ -2112,10 +2100,10 @@ else
   CMP #$72					;
   BEQ CODE_CB47					;donkey kong image is now its own loading state instead of being placed right after the screen clear from after PLAYER X string. this fixes glitchy lines at the top of the screen that flicker briefly when the phase loads
   RTS						;
-  
+
 CODE_CB30:
   JSR ClearScreenAndRemoveSpriteTiles_CA53	;
-  JSR CODE_CBCA					;show player 1 or player 2 screen
+  JSR ShowPlayerXScreen_CBCA			;show player 1 or player 2 screen
 
 CODE_CB36:
   DEC $43					;
@@ -2157,10 +2145,10 @@ LDX PhaseNo					;get phase design
 DEX						;
 TXA						;
 ASL A						;
-JSR CODE_C807					;
+JSR DrawLayout_C807				;
 
 LDA #$0A					;draw score 'n hud
-JSR CODE_C807					;
+JSR DrawLayout_C807				;
 
 LDA Players					;check players
 CMP #Players_2Players				;
@@ -2172,14 +2160,15 @@ STA $00						;
 LDA #$20					;($2076)
 STA $01						;
 
-LDA #$04					;erase II symbol and score display for second player if not in 2 player mode
-JSR CODE_C815					;
+LDA #$04					;will erase II symbol and score display for second player if not in 2 player mode
+JSR GetVRAMUpdateToBuffer_C815			;
 
 CODE_CB7B:
 LDA #$01					;update the score
 STA Score_UpdateFlag				;
 JSR UpdateTOPScorePrep_D032			;
-JSR CODE_CBBD					;hmm...
+
+JSR CODE_CBBD					;fill in the life counter
 
 LDA #<VRAMLoc_LoopCount				;
 STA $00						;
@@ -2188,14 +2177,14 @@ INY						;w +1 e.g. instead of 0, show 1
 JSR VRAMUpdateSingle_F4C2			;
 
 LDA #$00					;
-STA $2C						;didnt overflow
+STA Score_InvertOperandFlag+12			;didnt overflow or whatever...
 
 LDA #$80					;cap bonus score counter
 DEY						;
 CPY #$04					;
 BPL CODE_CB9E					;however the logic is flawed. if value is 80+, it'll use incorrect table bytes (and cause killscreen)
 
-LDA DATA_C207,Y					;load bonus points from table
+LDA InitialBONUSScore_C207,Y			;load starting bonus points from table
 
 CODE_CB9E:
 STA ScoreDisplay_Bonus				;
@@ -2203,10 +2192,11 @@ STA ScoreDisplay_Bonus				;
 LDA #$0D					;
 STA Timer_BonusScoreDecrease			;
 
-LDA #$02                 
-STA $00                  
-JSR CODE_F23C                
-DEC Timer_Transition
+LDA #$02					;
+STA $00						;
+JSR CODE_F23C					;counter update
+
+DEC Timer_Transition				;
 
 If Version = JP
   LDA Demo_Active				;check if it's a demo mode
@@ -2222,15 +2212,13 @@ RTS						;
 ;used to clear OAM via sprite drawing engine
 RemoveSpriteTiles_CBAE:
 LDA #<OAM_Y					;
-STA $04						;
+STA TEMP_EntityOAMSlot				;
 
 LDA #$FF					;remove ALL tiles!
 JMP CODE_F092					;
 
 JP_DisableRenderAndClearScreen_CBB3:
 DisableRenderAndClearScreen_CBB7:
-JP_CODE_CBB3:
-CODE_CBB7:
 JSR DisableRender_D19A				;no rendering
 JMP CODE_F1B4					;clear screen
 
@@ -2245,10 +2233,10 @@ STA $01						;
 LDY Jumpman_Lives				;set lives number as tile value
 JMP VRAMUpdateSingle_F4C2			;
 
-;show "PLAYER X" screen where X is the player's number (player 1 or Player 2)
-;ShowPlayerX_CBCA:
-JP_CODE_CBC6:
-CODE_CBCA:
+;show "PLAYER X" screen where X is the player's number (player I or Player II)
+
+JP_ShowPlayerXScreen_CBC6:
+ShowPlayerXScreen_CBCA:
 LDA Demo_Active					;if demo mode is active, don't show player X message
 BNE RETURN_CBF4					;
 
@@ -2264,7 +2252,7 @@ BNE RETURN_CBF4					;
 LDY #$00					;
 
 LOOP_CBDF:
-LDA DATA_C6AA,Y					;display PLAYER X
+LDA Tilemap_PlayerScreen_C6AA,Y			;display PLAYER X (where X is either I or II)
 STA BufferAddr,Y				;
 BEQ CODE_CBEB					;
 INY						;
@@ -2284,7 +2272,7 @@ ShowGameOverMessage_CBF5:
 LDY #$00					;
 
 LOOP_CBF7:
-LDA DATA_C6C2,Y					;
+LDA Tilemap_GameOver_C6C2,Y			;
 STA BufferAddr,Y				;GAME OVER message in the buffer
 BEQ RETURN_CC03					;
 INY						;
@@ -2316,7 +2304,7 @@ INC Jumpman_Lives				;increase lives count
 JSR CODE_CBBD					;update visual life count
 
 RETURN_CC23:
-RTS
+RTS						;
 
 ;add bonus score to the player's when phase complete (or is TOP score?)
 CODE_CC24:
@@ -2339,7 +2327,7 @@ JSR UpdateTOPScorePrep_D032			;TOP score update
 LDA #$00					;
 STA Demo_InitFlag				;init demo (for when we're back at the title screen)
 
-JSR CODE_CCC1					;load all the entities
+JSR InitEntities_CCC1				;load all the entities
 JMP CODE_D7F2					;load fire colors
 
 ;phase late initialization (after phase start jingle plays out and gameplay actually begins)
@@ -2348,8 +2336,8 @@ LDA #$00					;
 TAX						;
 
 LOOP_CC4A:
-STA $59,X					;initialize RAM from 59-E2
-STA $040D,X					;and $040D-$0496
+STA Jumpman_CurrentPlatformIndex,X		;initialize RAM from 59-E2
+STA Barrel_AnimationTimer,X			;and $040D-$0496
 INX						;
 CPX #$89					;
 BNE LOOP_CC4A					;
@@ -2424,18 +2412,17 @@ STA Springboard_UpwardSpeed+4			;
 RTS						;
 
 ;entity initialization
-;InitEntities_CCC1:
-CODE_CCC1:
+InitEntities_CCC1:
 LDA PhaseNo					;get a pointer
 SEC						;
 SBC #$01					;
 ASL A						;
 TAX						;
 
-LDA DATA_C5A6,X					;
+LDA PhaseEntityInitPointers_C5A6,X		;
 STA $09						;
 
-LDA DATA_C5A6+1,X				;
+LDA PhaseEntityInitPointers_C5A6+1,X		;
 STA $0A						;
 
 LDX #$00					;
@@ -2445,12 +2432,12 @@ LOOP_CCD6:
 LDA ($09),Y					;check for a break command
 CMP #$FE					;
 BEQ RETURN_CCF3					;return if so
-STA $00,X					;coordinates and stuff
+STA TEMP_EntityXPosition,X			;coordinates and stuff
 INY						;
 INX						;
 CPX #$05					;
 BNE LOOP_CCD6					;only 4 bytes per sprite tile
-STY $86						;save Y (which is pointless
+STY $86						;save Y (which is pointless)
 
 LDA ($09),Y					;
 JSR SpriteDrawingEngine_F096			;
@@ -2479,11 +2466,11 @@ STA Sound_Fanfare				;
 RTS						;
 
 CODE_CD07:
-LDA $43						;
+LDA Timer_Transition				;
 CMP #$58					;prematurely end when reaches this value
 BCC CODE_CD13					;
 
-JSR HandleTimers_F4AC				;timer handling (won't decrease transition timer for a little bit)
+JSR HandleGlobalTimers_F4AC			;timer handling (won't decrease transition timer for a little bit)
 JMP CODE_CD22					;run states
 
 CODE_CD13:
@@ -2491,12 +2478,12 @@ JSR CODE_CC24					;add bonus score to the score counter
 JSR CODE_CC04					;more score shenanigans
 
 LDA #$00					;
-STA $43						;
+STA Timer_Transition				;
 STA Phase_CompleteFlag				;not defeated anymore, transition to the next stage
 JMP ClearScreenAndRemoveSpriteTiles_CA53	;transition
 
 CODE_CD22:
-LDA $43						;run various states based on current timer's time
+LDA Timer_Transition				;run various states based on current timer's time
 CMP #$9F					;
 BEQ CODE_CD45					;remove HUD elements
 CMP #$9E					;
@@ -2516,35 +2503,35 @@ BCS CODE_CD6C					;draw platform with pauline and jumpman, animate BG DK
 RTS						;nothing else
 
 CODE_CD45:
-DEC $43						;
+DEC Timer_Transition				;
 JMP CODE_CD6F					;
 
 CODE_CD4A:
-DEC $43						;
+DEC Timer_Transition				;
 JMP CODE_CD7F					;
 
 CODE_CD4F:
 LDY #$1C					;
-DEC $43						;
+DEC Timer_Transition				;
 
 LDA #$06					;
 JMP CODE_C823					;remove misc. stuff
 
 CODE_CD58:
 LDY #$1C					;
-DEC $43						;
+DEC Timer_Transition				;
 
 LDA #$08					;
 JMP CODE_C823					;remove ladders and more misc stuff.
 
 CODE_CD61:
-DEC $43						;
+DEC Timer_Transition				;
 JMP CODE_CD89					;
 
-CODE_CD66:  
+CODE_CD66:
 JMP CODE_CD9D					;
 
-CODE_CD69:  
+CODE_CD69:
 JMP CODE_CDB1					;
 
 CODE_CD6C:
@@ -2563,7 +2550,7 @@ DEY						;
 BPL LOOP_CD76					;
 RTS						;
 
-CODE_CD7F:  
+CODE_CD7F:
 JSR RemoveSpriteTiles_CBAE			;all sprite tiles BEGONE
 
 LDY #$16					;remove platforms, so they appear below
@@ -2576,11 +2563,11 @@ LDA #$0E					;
 JSR CODE_C823					;
 
 LDA #OAMProp_Palette3				;default OAM prop
-STA $02						;
-        
+STA TEMP_EntityOAMProp				;
+
 LDA #6*4					;store to this much
-STA $03						;
-       
+STA TEMP_EntityGFXSize				;
+
 LDA #DonkeyKong_OAM_Slot*4			;store props for these tiles (for DK)
 JMP CODE_F08C					;
 
@@ -2599,7 +2586,7 @@ JMP CODE_EB89					;normal
 
 CODE_CDAE:
 JMP CODE_EB92					;flipped (sorta)
-  
+
 CODE_CDB1:
 CMP #$8F					;
 BNE CODE_CDD7					;check if we should init some stuff
@@ -2614,22 +2601,22 @@ LDA #Sound_Effect_Fall				;DK is falling sound effect
 STA Sound_Effect				;
 
 LDA #DonkeyKong_OAM_XPos			;initial x-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA #DonkeyKong_OAM_YPos			;initial y-pos
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 CODE_CDCA:
 LDA #DonkeyKong_OAM_FirstTile			;start from tile $40
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 LDA #$46					;4 rows, 6 tiles each
-STA $03						;
+STA TEMP_EntityGFXSize				;
 
 LDA #DonkeyKong_OAM_Slot*4			;OAM slot to start from
 JMP CODE_F080					;draw DK
 
-CODE_CDD7:  
+CODE_CDD7:
 LDA DonkeyKong_OAM_Y				;check when DK hit platforms
 CMP #$A0					;at this position
 BEQ CODE_CDEF					;
@@ -2637,10 +2624,10 @@ CMP #$FF					;if the sprites are already removed
 BEQ CODE_CDF3					;keep them offscreen?
 CLC						;
 ADC #$02					;move 2 pixels down
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA DonkeyKong_OAM_X				;same X-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 JMP CODE_CDCA					;update image
 
 CODE_CDEF:
@@ -2650,7 +2637,7 @@ STA Sound_Effect				;
 ;remove DK's sprite tiles, then draw BG donkey kong
 CODE_CDF3:
 LDA #4*6					;remember 4 rows with 6 tiles each? this much we're removing
-STA $03						;
+STA TEMP_EntityGFXSize				;
 
 LDA #DonkeyKong_OAM_Slot*4			;
 JSR CODE_F08C					;remove DK sprite
@@ -2662,7 +2649,7 @@ LDA #$23					;and hibyte ofc
 STA $01						;
 
 LDA #$12					;
-JSR CODE_C815					;init Donkey Kong's defeated frame (attributes + flows into drawing frame 2)
+JSR GetVRAMUpdateToBuffer_C815			;init Donkey Kong's defeated frame (attributes + flows into drawing frame 2)
 
 LDA #$01					;
 JMP CODE_CE0E					;another gem.
@@ -2679,11 +2666,11 @@ PLP                      			;
 BNE CODE_CE1F					;A is not 0 (from LDA) - draw frame 2
 
 LDA #$16					;
-JMP CODE_C815					;draw defeated kong frame 1
+JMP GetVRAMUpdateToBuffer_C815			;draw defeated kong frame 1
 
 CODE_CE1F:
 LDA #$14					;
-JMP CODE_C815					;frame 2
+JMP GetVRAMUpdateToBuffer_C815			;frame 2
 
 CODE_CE24:  
 CMP #$85					;planted donkey?
@@ -2704,16 +2691,16 @@ JSR CODE_C823					;
 
 ;draw love
 LDA #Ending_Heart_XPos				;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
-LDA #Ending_Heart_YPos				;
-STA $01						;
+LDA #Ending_Heart_YPos				;love is in the air, apparently. I mean, literally, this heart is in the air. not on the ground.
+STA TEMP_EntityYPosition			;
 
 LDA #Heart_OAM_Tile				;tile
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
-LDA #$22					;standart 16x16
-STA $03						;
+LDA #$22					;standard 16x16
+STA TEMP_EntityGFXSize				;
 
 LDA #Heart_OAM_Slot*4				;OAM slot
 JSR CODE_F080					;draw!
@@ -2721,10 +2708,10 @@ JSR CODE_F080					;draw!
 DEC Timer_Transition				;
 
 LDA #Ending_Jumpman_XPos			;x-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA #Ending_Jumpman_YPos			;y-pos
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA #Jumpman_GFXFrame_Stand			;init draw jumpman
 JSR SpriteDrawingPREP_StoreTile_EAD4		;
@@ -2813,7 +2800,7 @@ CODE_CED6:
 JSR CODE_EB06					;DK animations (HandleDonkeyKong_EB06)
 JSR HandleBonusCounter_EBB6			;handle bonus counter (decrease over time & kill the player)
 JSR HandleHurryUpMusic_D041			;play hurry up music when the bonus counter is low enough
-JSR CODE_D1A4					;handle player's state
+JSR HandleJumpmanState_D1A4			;handle player's state
 JSR HandlePauline_EA5F				;animate pauline sometimes
 JSR CODE_E1E5					;flame enemy spawning or smth
 JSR CODE_EE79					;handle collectible items and bolts
@@ -2854,7 +2841,7 @@ LDA Pause_Flag					;if game is paused, return
 BNE RETURN_CF2A
 
 JSR CODE_D04C					;check for a win situation
-JSR HandleTimers_F4AC				;handle global timers
+JSR HandleGlobalTimers_F4AC			;handle global timers
 
 RETURN_CF2A:
 RTS						;
@@ -3147,11 +3134,11 @@ BEQ CODE_D0A5					;fix that!
 CMP #$05					;should loop into 25M?
 BCS CODE_D0AA					;should loop into 25M.
 JMP CODE_D0B5					;
-  
+
 CODE_D0A5:
 INC PhaseNo					;jump over #$02
 JMP CODE_D0B5					;
-  
+
 CODE_D0AA:
 LDA #Phase_25M					;loop into 25M
 STA PhaseNo					;
@@ -3212,7 +3199,7 @@ BCC RETURN_D138					;
 LDA Demo_Active					;if died during demo, stay silent
 BNE CODE_D0F4					;
 
-LDA #Sound_Effect2_Dead				;
+LDA #Sound_Effect2_PlayerDead			;
 STA Sound_Effect2				;
 
 CODE_D0F4:
@@ -3248,11 +3235,11 @@ BEQ CODE_D11D					;if so, skip timer shenanigans
 LDA #$7D					;wait a bit before reloading phase/going to the title screen
 STA Timer_PhaseEndTimer				;
 
-CODE_D11D:  
+CODE_D11D:
 LDA #Jumpman_GFXFrame_Dead_Dead			;
 
 CODE_D11F:
-STA $02						;store tile
+STA TEMP_EntityOAMTile				;store tile
 JSR JumpmanPosToScratch_EAE1			;get some prep work
 JSR SpriteDrawingPREP_JumpmanOAM_EACD		;more of it
 JSR CODE_F082					;draw simple flips.
@@ -3359,43 +3346,42 @@ STA RenderMirror				;
 RTS						;
 
 ;check player's state
-;HandleJumpmanState_D1A4:
-CODE_D1A4:
+HandleJumpmanState_D1A4:
 LDA Jumpman_State				;
 CMP #Jumpman_State_Grounded			;
-BEQ CODE_D1BB					;if grounded, can move normally
+BEQ Long_HandleJumpman_State_Grounded_D1BB	;if grounded, can move normally
 
-CODE_D1AA:
+HandleJumpman_State_NonGrounded_D1AA:
 CMP #Jumpman_State_Climbing			;is jumpman climbing?
-BEQ CODE_D1C3					;do climbing things
+BEQ Long_HandleJumpman_State_Climbing_D1C3	;do climbing things
 CMP #Jumpman_State_Jumping			;jumped?
-BEQ CODE_D1C6					;do jump stuff
+BEQ Long_HandleJumpman_State_Jumping_D1C6	;do jump stuff
 CMP #Jumpman_State_Falling			;
-BEQ CODE_D1C9					;IM FALLING AND I CANT GET UP
+BEQ Long_HandleJumpman_State_Falling_D1C9	;IM FALLING AND I CANT GET UP
 CMP #Jumpman_State_Hammer			;move and stuff when equipped with hammer
-BEQ CODE_D1CC					;
-RTS						;
+BEQ Long_HandleJumpman_State_Hammer_D1CC	;
+RTS						;none of the above
 
-CODE_D1BB:
-JSR CODE_D1CF					;handle movement
+Long_HandleJumpman_State_Grounded_D1BB:
+JSR HandleJumpman_State_Grounded_D1CF		;handle movement
 
 LDA Jumpman_State				;continue checking
-JMP CODE_D1AA					;in case we changed it during movement
+JMP HandleJumpman_State_NonGrounded_D1AA	;in case we changed it during movement
 
-CODE_D1C3:
-JMP CODE_D37E					;climb
+Long_HandleJumpman_State_Climbing_D1C3:
+JMP HandleJumpman_State_Climbing_D37E		;climb
 
-CODE_D1C6:
-JMP CODE_D547					;jump
+Long_HandleJumpman_State_Jumping_D1C6:
+JMP HandleJumpman_State_Jumping_D547		;jump
 
-CODE_D1C9:
-JMP CODE_D697					;falling. Oops
+Long_HandleJumpman_State_Falling_D1C9:
+JMP HandleJumpman_State_Falling_D697		;falling. Oops
 
-CODE_D1CC:
-JMP CODE_D6C6					;HAMMER TIME
+Long_HandleJumpman_State_Hammer_D1CC:
+JMP HandleJumpman_State_Hammer_D6C6		;HAMMER TIME
 
 ;Grounded state
-CODE_D1CF:
+HandleJumpman_State_Grounded_D1CF:
 LDA Direction					;check for directional input
 CMP #Input_Right				;holding right...
 BEQ CODE_D1E5					;move
@@ -3442,7 +3428,7 @@ JSR CODE_D2CB					;check if on platform
 STA Jumpman_OnPlatformFlag			;
 
 LDA Jumpman_OAM_Y				;
-JSR CODE_E016					;which platform height?
+JSR GetEntitysPlatform_E016			;which platform height?
 STA Jumpman_CurrentPlatformIndex		;
 
 JSR CODE_D8EB					;add shift pos, or something
@@ -3473,7 +3459,7 @@ STA Jumpman_WalkFlag				;move next frame
 JMP CODE_D275					;
 
 CODE_D23E:
-LDA #Sound_Effect2_Movement			;make walking sound effect
+LDA #Sound_Effect2_Step				;make walking sound effect
 STA Sound_Effect2				;
 
 LDA #$00					;
@@ -3520,7 +3506,7 @@ CODE_D275:
 JSR JumpmanPosToScratch_EAE1			;get pos to scrath ram
 
 LDA Jumpman_GFXFrame				;get jumpman's animation
-STA $02						;
+STA TEMP_EntityOAMTile				;
 JSR SpriteDrawingPREP_JumpmanOAM_EACD		;set jumpman's OAM to low byte indirect address
 
 LDA Direction					;
@@ -3562,7 +3548,7 @@ STA $07
 JSR CODE_D8AD					;check for all ladders
 BEQ RETURN_D2CA					;not climbing ladder? return
 
-LDA $00						;
+LDA TEMP_EntityXPosition			;
 SEC						;
 SBC #$04					;
 STA Jumpman_CurrentLadderXPos			;this must be ladder's X-pos
@@ -3656,10 +3642,10 @@ LDY MovingPlatform_OAMSlots_C2CC,X		;platform's OAM slots
 LDA OAM_Y,Y					;
 CMP #$FF					;is it offscreen?
 BEQ CODE_D34E					;why bother then
-STA $01						;save y-pos
+STA TEMP_EntityYPosition			;save y-pos
 
 LDA OAM_X,Y					;save x-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 JSR CODE_EFEF					;collision check
 CMP #$01					;
@@ -3709,7 +3695,7 @@ LDA #$01					;won't fall (I guess its checked somewhere else)
 RTS						;
 
 ;Handle player climbing
-CODE_D37E:
+HandleJumpman_State_Climbing_D37E:
 LDA Direction					;
 CMP #Input_Up					;move up?
 BEQ CODE_D38E					;
@@ -3725,7 +3711,7 @@ LDA Jumpman_OnPlatformFlag			;on platform?
 BEQ CODE_D39C					;continue clumbing
 JSR JumpmanPosToScratch_EAE1			;jumpman's position to scratch ram
 
-DEC $01						;go up
+DEC TEMP_EntityYPosition			;go up
 JSR CODE_D50A					;climb from platform
 BNE CODE_D3CD					;
 
@@ -3738,7 +3724,7 @@ JSR JumpmanTiming_D9E8				;
 BNE CODE_D3AF					;
 
 LDA Jumpman_OAM_Y				;y-pos to scrath ram
-STA $01						;
+STA TEMP_EntityYPosition			;
 JMP CODE_D4CF					;skip it all
 
 CODE_D3AF:
@@ -3773,7 +3759,7 @@ STA Jumpman_ClimbOnPlatAnimCounter		;
 TAX						;
 DEX						;
 LDA DATA_C147,X					;
-STA $02						;sprite tile
+STA TEMP_EntityOAMTile				;sprite tile
 
 LDA #$00					;
 STA Jumpman_OnPlatformFlag			;we're climbing a ladder, meaning, we're not grounded
@@ -3802,7 +3788,7 @@ STA Jumpman_ClimbAnimCounter			;
 TAX						;
 DEX						;
 LDA DATA_C159,X					;get ladder frame
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 LDA #$00					;
 STA Jumpman_OnPlatformFlag			;again, not grounded!
@@ -3811,14 +3797,14 @@ JSR Jumpman_MoveLadderUp_D4EE			;
 
 CODE_D40D:
 LDA Jumpman_CurrentLadderXPos			;player's X-position
-STA $00						;
+STA TEMP_EntityXPosition			;
 STA Jumpman_OAM_X				;put on the ladder
 JSR SpriteDrawingPREP_Draw16x16_EAD1		;draw 16x16
 
 LDA #<Jumpman_OAM_Y				;
-STA $04						;
+STA TEMP_EntityOAMSlot				;
 
-LDA $02						;check if we've got $54 from the data above
+LDA TEMP_EntityOAMTile				;check if we've got $54 from the data above
 CMP #Jumpman_GFXFrame_ClimbingFlipped		;
 BEQ CODE_D426					;yes, load normal climbing frame but flip horizontally
 
@@ -3827,7 +3813,7 @@ JMP CODE_D42C					;
 
 CODE_D426:
 LDA #Jumpman_GFXFrame_Climbing			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 LDA #$01					;draw flip
 
@@ -3841,8 +3827,8 @@ BEQ CODE_D445					;no?
 
 JSR JumpmanPosToScratch_EAE1			;
 
-INC $01						;move down
-JSR CODE_D50A					;also, run JumpmanPosToScratch_EAE1 again and other stuff... (which means above INC $01 is pointless)
+INC TEMP_EntityYPosition			;move down
+JSR CODE_D50A					;also, run JumpmanPosToScratch_EAE1 again and other stuff... (which means above INC TEMP_EntityYPosition is pointless)
 CMP #$01					;
 BEQ CODE_D445					;
 JMP CODE_D4CF					;
@@ -3857,7 +3843,7 @@ JSR JumpmanTiming_BothBytes_D9E6		;(most likely supposed to be JSR JumpmanTiming
 BNE CODE_D45A					;
 
 LDA Jumpman_OAM_Y				;temp store
-STA $01						;
+STA TEMP_EntityYPosition			;
 JMP CODE_D4CF					;check if on ground
 
 CODE_D45A:
@@ -3887,7 +3873,7 @@ STA Jumpman_ClimbOnPlatAnimCounter		;
 TAX						;
 DEX						;
 LDA DATA_C147,X					;get anim tile (or Jumpman_GFXFrame_ClimbingFlipped which is rather a command)
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 LDA #$03					;
 STA Jumpman_ClimbAnimCounter			;show flip next frame once we escape this animation
@@ -3916,7 +3902,7 @@ SEC						;
 SBC #$01					;
 TAX						;
 LDA DATA_C159,X					;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 LDA #$00					;
 STA Jumpman_ClimbOnPlatAnimCounter		;
@@ -3929,8 +3915,8 @@ STA $00						;X-position
 
 JSR SpriteDrawingPREP_JumpmanOAM_EACD		;16x16 and OAM
 
-LDA $02						;check for 54
-CMP #$54					;
+LDA TEMP_EntityOAMTile				;check for flipped climbing frame
+CMP #Jumpman_GFXFrame_ClimbingFlipped		;
 BEQ CODE_D4C6					;yes, draw flipped climbing
 
 LDA #$00					;draw norm
@@ -3938,7 +3924,7 @@ JMP CODE_D4CC					;
 
 CODE_D4C6:
 LDA #Jumpman_GFXFrame_Climbing			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 LDA #$01					;
 
@@ -3953,7 +3939,7 @@ BEQ RETURN_D4ED					;still on ladder? return
 LDA Jumpman_OAM_Y				;
 CLC						;
 ADC #$08					;
-JSR CODE_E016					;get which platform the Jumpman's on
+JSR GetEntitysPlatform_E016			;get which platform the Jumpman's on
 STA Jumpman_CurrentPlatformIndex		;
 
 LDA #Jumpman_State_Grounded			;
@@ -3974,7 +3960,7 @@ Jumpman_MoveLadderUp_D4EE:
 LDA Jumpman_OAM_Y				;move up
 SEC						;
 SBC #$01					;
-STA $01						;
+STA TEMP_EntityYPosition			;
 JMP CODE_D501					;
 
 ;CODE_D4F9:
@@ -3982,14 +3968,14 @@ Jumpman_MoveLadderDown_D4F9:
 LDA Jumpman_OAM_Y				;move down
 CLC						;
 ADC #$01					;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 CODE_D501:
 AND #$06					;
 BNE RETURN_D509					;
 
-;every 6 pixels, make a movement sound
-LDA #Sound_Effect2_Movement			;
+;every 6 pixels, make a step sound
+LDA #Sound_Effect2_Step				;
 STA Sound_Effect2				;
 
 RETURN_D509:
@@ -4040,7 +4026,7 @@ CODE_D544:
 LDA $08						;
 RTS						;
 
-CODE_D547:
+HandleJumpman_State_Jumping_D547:
 LDA #%11111111					;
 JSR JumpmanTiming_BothBytes_D9E6		;update every frame... is this even needed?
 CMP #$00					;FeelsBadMan
@@ -4074,12 +4060,12 @@ STA Direction_Horz				;
 
 CODE_D570:
 LDA Jumpman_OAM_Y				;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA #$00					;
 JSR CODE_EF72					;update vertical pos with y-speed and stuff (upward).
 
-LDA $01						;calculated y-pos
+LDA TEMP_EntityYPosition			;calculated y-pos
 STA Jumpman_OAM_Y				;
 
 ;always move in one direction
@@ -4122,13 +4108,13 @@ STA Jumpman_AirMoveFlag				;
 
 CODE_D5B3:
 LDA Jumpman_OAM_X				;for collision?
-STA $00						;
+STA TEMP_EntityXPosition			;
 JSR CODE_D800					;check if can grab a hammer
 
 LDA Jumpman_JumpedFlag				;marked the player as jumped?
 BEQ CODE_D5E2					;no, do so
 
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 SEC						;
 SBC #$10					;if player's y-position 16 pixels lower than the initial y-pos from which the player jumped
 CMP Jumpman_JumpYPos				;
@@ -4159,7 +4145,7 @@ STA Sound_Effect2				;
 LDA #$01					;
 STA Jumpman_JumpedFlag				;now we're sure the player has jumped
 
-LDA $01						;y-pos thing
+LDA TEMP_EntityYPosition			;y-pos thing
 STA Jumpman_JumpYPos				;
 JMP CODE_D5F1					;sighio
 
@@ -4171,7 +4157,7 @@ CODE_D5F6:
 JSR JumpmanPosToScratch_EAE1			;jumpman's position to scratch ram
 
 LDA #Jumpman_GFXFrame_Landing			;
-STA $02						;tile
+STA TEMP_EntityOAMTile				;tile
 JSR SpriteDrawingPREP_JumpmanOAM_EACD		;prepare for drawing
 
 LDA Direction_Horz				;flip player's GFX if necessary
@@ -4290,14 +4276,15 @@ RTS						;
 ;----------------------------------------------
 
 ;Jumpman is falling!!! AAA
+HandleJumpman_State_Falling_D697:
 CODE_D697:
 LDA #%11111111					;update... always?
 JSR JumpmanTiming_BothBytes_D9E6		;
 BEQ RETURN_D6C5					;
 
 JSR JumpmanPosToScratch_EAE1			;
-INC $01						;fall down & quick!
-INC $01						;
+INC TEMP_EntityYPosition			;fall down & quick!
+INC TEMP_EntityYPosition			;
 
 LDA Direction_Horz				;
 CMP #Input_Left					;
@@ -4312,7 +4299,7 @@ SEC						;
 SBC #$02					;(becuase first OAM tile is actually the last tile for non-flipped sprite) (when i mean last i mean on the same row)
 
 CODE_D6B7:
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 JSR CODE_F075					;draw da player
 
@@ -4326,10 +4313,10 @@ RETURN_D6C5:
 RTS						;
 
 ;movement & animation with hammer
-CODE_D6C6:
+HandleJumpman_State_Hammer_D6C6:
 LDA Timer_Hammer				;check for hammer timer
 BNE CODE_D6CD					;continue hammering the point home
-JMP CODE_D7BF					;oops, I don't have any more quarters to insert to make the hammer work again
+JMP HammerWornOut_D7BF				;oops, I don't have any more quarters to insert to make the hammer work again
 
 CODE_D6CD:
 LDA #%11011011					;
@@ -4351,47 +4338,47 @@ CMP #Input_Left					;
 BEQ CODE_D710					;moving left
 
 ;stationary
-CODE_D6E8:  
+CODE_D6E8:
 LDA Hammer_AnimationFrameCounter		;rotate this counter
 ASL A						;
-STA Hammer_AnimationFrameCounter		;the bit has been cleared
+STA Hammer_AnimationFrameCounter		;the bit has been cleared... or set. it depends on the mood
 BEQ CODE_D6F2					;
 JMP CODE_D753					;don't animate
 
-CODE_D6F2:  
+;animate hammer, standing still
+CODE_D6F2:
 LDA #%00100000					;
 STA Hammer_AnimationFrameCounter		;will activate after 3 frames
 
-;animate moving w/ hammer
-LDA Hammer_JumpmanFrame
-BEQ CODE_D6FE   
-CMP #$04                 
-BCC CODE_D703
+LDA Hammer_JumpmanFrame				;if we didn't set the frame, initalize it
+BEQ CODE_D6FE					;
+CMP #Hammer_JumpmanFrame_Walk2_HammerDown	;check if we had hammer up or down
+BCC CODE_D703					;will stand still with hammer placed appropriately
 
 CODE_D6FE:
-LDA #$02                 
-JMP CODE_D705
+LDA #Hammer_JumpmanFrame_Stand_HammerUp		;just standing there, doing nothing
+JMP CODE_D705					;
 
-CODE_D703: 
-LDA #$05
+CODE_D703:
+LDA #Hammer_JumpmanFrame_Stand_HammerDown	;
 
 CODE_D705:
-STA Hammer_JumpmanFrame
-JMP CODE_D753
+STA Hammer_JumpmanFrame				;
+JMP CODE_D753					;display
 
 CODE_D70A:
 INC Jumpman_OAM_X				;move right
-JMP CODE_D713
+JMP CODE_D713					;
 
 CODE_D710:
 DEC Jumpman_OAM_X				;move left
 
 CODE_D713:
-JSR CODE_D2CB
+JSR CODE_D2CB					;
 STA Jumpman_OnPlatformFlag			;stay on platform i think
 
 LDA Jumpman_OAM_Y				;
-JSR CODE_E016					;
+JSR GetEntitysPlatform_E016			;
 STA Jumpman_CurrentPlatformIndex		;
 
 JSR CODE_D8EB					;
@@ -4404,29 +4391,29 @@ CLC						;
 ADC Jumpman_OAM_Y				;
 STA Jumpman_OAM_Y				;
 
-CODE_D732:  
+CODE_D732:
 JSR CODE_D36A					;see if the player is standing on a platform
 BEQ CODE_D73E					;if so, keep hammering
 
 LDA #Jumpman_State_Falling			;fell off the platform, oopsie!
-STA Jumpman_State
-JMP CODE_D7BF
+STA Jumpman_State				;
+JMP HammerWornOut_D7BF				;or so you thought, because it makes jumpman grounded right after. this makes it possible to make a frame perfect jump to save yourself from doom or get a graphical glitch if you turn right after
 
 ;animate jumpman w/ hammer (hoving horz)
 CODE_D73E:
-LDA #Sound_Effect2_Movement			;play movement sound effect every frame
+LDA #Sound_Effect2_Step				;play movement sound effect every frame
 STA Sound_Effect2				;
 
 LDA Hammer_JumpmanFrame				;
 BEQ CODE_D74F					;if zero, set to 1 (from walk 2 to stand)
-CMP #$06					;
-BCS CODE_D74F					;more than or equal 6, set stand, hammer up
+CMP #Hammer_JumpmanFrame_Walk1_HammerDown	;
+BCS CODE_D74F					;exceeds/equal to the last index, hammer up
 
-INC Hammer_JumpmanFrame				;
-JMP CODE_D753
+INC Hammer_JumpmanFrame				;animate like normal
+JMP CODE_D753					;
 
 CODE_D74F:
-LDA #$01					;
+LDA #Hammer_JumpmanFrame_Walk2_HammerUp		;default frame
 STA Hammer_JumpmanFrame				;
 
 CODE_D753:
@@ -4442,37 +4429,37 @@ BEQ CODE_D767					;
 
 LDA #$00					;hammer down
 JMP CODE_D769					;
-  
+
 CODE_D767:
 LDA #$01					;hammer up
 
 CODE_D769:
 BEQ CODE_D786					;
-    
+
 LDA #$04					;slight x-offset
 CLC						;
 ADC Jumpman_OAM_X				;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA Jumpman_OAM_Y				;and y-pos
 SEC						;
 SBC #$0E					;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA #$21					;2 rows, 1 tile each
-STA $03						;
+STA TEMP_EntityGFXSize				;
 
 LDA #Hammer_GFXFrame_HammerUp			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 JMP CODE_D7AD					;draw the hammer
 
 ;hammer's down
 CODE_D786:
 LDA Direction_Horz				;position hammer based on horz direction
-CMP #Input_Right				;
-BNE CODE_D795					;
+CMP #Input_Right				;check if last time we moved right
+BNE CODE_D795					;if not, to the left
 
-LDA #$0E					;shift hammer's pos
+LDA #$0E					;shift hammer's pos (to the right)
 CLC						;
 ADC Jumpman_OAM_X				;relative to jumpman
 JMP CODE_D79B					;
@@ -4480,64 +4467,64 @@ JMP CODE_D79B					;
 CODE_D795:
 LDA Jumpman_OAM_X				;
 SEC						;
-SBC #$0E					;
+SBC #$0E					;shift hammer to the left
 
-CODE_D79B:  
-STA $00						;
+CODE_D79B:
+STA TEMP_EntityXPosition			;
 
 LDA #$06					;
 CLC						;
 ADC Jumpman_OAM_Y				;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA #$12					;1 row w/ 2 tiles
-STA $03						;
+STA TEMP_EntityGFXSize				;
 
 LDA #Hammer_GFXFrame_HammerDown			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
-CODE_D7AD:  
+CODE_D7AD:
 LDA Jumpman_HeldHammerIndex			;check which hammer we're holing
 CMP #$01					;get OAM slots that way
 BEQ CODE_D7B8					;
 
 LDA #<Hammers_OAM_Y+8				;load OAM offset (second hammer)
 JMP CODE_D7BA					;
-  
+
 CODE_D7B8:
 LDA #<Hammers_OAM_Y				;first hammer OAM
-  
+
 CODE_D7BA:
-STA $04						;
+STA TEMP_EntityOAMSlot				;
 JMP CODE_F078					;draw da hammer
 
 ;hammer has worn out...
-CODE_D7BF:
+HammerWornOut_D7BF:
 LDA #$12					;prepare for sprite tile removal, i think
-STA $03						;
+STA TEMP_EntityGFXSize				;
 
-LDA Jumpman_HeldHammerIndex			;
+LDA Jumpman_HeldHammerIndex			;check which hammer it was they held
 CMP #$01					;
 BEQ CODE_D7D3					;
 
-LDA #$00					;
+LDA #$00					;first hammer cannot be picked up any more
 STA Hammer_CanGrabFlag+1			;
 
 LDA #<Hammers_OAM_Y+8				;
-JMP CODE_D7DA
+JMP CODE_D7DA					;
 
-CODE_D7D3:  
-LDA #$00					;
+CODE_D7D3:
+LDA #$00					;second hammer cannot be picked up anymore
 STA Hammer_CanGrabFlag				;
 
 LDA #<Hammers_OAM_Y				;
 
 CODE_D7DA:
-STA $04						;
+STA TEMP_EntityOAMSlot				;
 JSR CODE_F094					;remove the hammer
 JSR CODE_D7F2					;restore fire color (if in 100M, fire enemies change color when equipped with hammer)
 
-LDA #Jumpman_State_Grounded			;jumpman is grounded
+LDA #Jumpman_State_Grounded			;jumpman is grounded (even if he was supposed to fall earlier)
 STA Jumpman_State				;
 
 LDA #$00					;
@@ -4557,7 +4544,7 @@ LDA #$3F					;VRAM pos ($3F19)
 STA $01						;
 
 LDA #$4E					;offset
-JSR CODE_C815					;
+JSR GetVRAMUpdateToBuffer_C815			;
 RTS						;
 
 CODE_D800:
@@ -4591,7 +4578,7 @@ CODE_D827:
 LDA OAM_Y					;get y-pos
 CLC						;and +8 (higher)
 ADC #$08					;
-JSR CODE_E016					;get what platform jumpman's on
+JSR GetEntitysPlatform_E016			;get what platform jumpman's on
 STA Jumpman_CurrentPlatformIndex		;
 
 LDA PhaseNo					;get a platform from which you can get a hammer, depending on phase
@@ -4621,10 +4608,10 @@ LDA #$02					;get hammer 2
 STA Jumpman_HeldHammerIndex			;
 
 LDA Hammers_OAM_Y+8				;probably place at jumpman's position
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA Hammers_OAM_X+8				;
-STA $00						;
+STA TEMP_EntityXPosition			;
 JMP CODE_D87D					;
 
 CODE_D867:
@@ -4637,10 +4624,10 @@ LDA #$01					;get hammer 1
 STA Jumpman_HeldHammerIndex			;
 
 LDA Hammers_OAM_Y				;place hammer at player's pos
-STA $01						;(probably)
+STA TEMP_EntityYPosition			;(probably)
 
 LDA Hammers_OAM_X				;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 CODE_D87D:
 LDA #$2E					;
@@ -4668,7 +4655,7 @@ LDA #$3F					;
 STA $01						;
 
 LDA #$46					;
-JSR CODE_C815					;save to buffer
+JSR GetVRAMUpdateToBuffer_C815			;save to buffer
 
 RETURN_D8A7:
 RTS						;
@@ -4690,10 +4677,10 @@ LDY #$00					;
 LDA ($04),Y					;
 
 LOOP_D8B9:
-STA $00						;x-pos
+STA TEMP_EntityXPosition			;x-pos
 INY						;
 LDA ($04),Y					;
-STA $01						;y-pos
+STA TEMP_EntityYPosition			;y-pos
 INY						;
 LDA ($04),Y					;
 CLC						;
@@ -4774,7 +4761,7 @@ CODE_D91A:
 LDA Jumpman_OAM_Y				;get player's Y position
 CLC						;and add 8
 ADC #$08					;
-JSR CODE_E016					;get which platform he's on
+JSR GetEntitysPlatform_E016			;get which platform he's on
 STA Jumpman_CurrentPlatformIndex		;if player's on the very low platform (at the beginning)
 CMP #$01					;
 BEQ CODE_D938					;don't check for ladders, i think?
@@ -4802,11 +4789,11 @@ LDA #$00					;start from the lowest elevation/shift or what have you
 STA Platform_ShiftIndex				;
 
 LDA DATA_C08C,X					;
-STA $00						;base x-pos
+STA TEMP_EntityXPosition			;base x-pos
 
 INX						;
 LDA DATA_C08C,X					;
-STA $01						;base y-pos
+STA TEMP_EntityYPosition			;base y-pos
 
 INX						;
 LDA DATA_C08C,X					;offset for the hitbox
@@ -4829,12 +4816,12 @@ LOOP_D964:
 JSR CODE_EFEF					;check platform collision
 BNE CODE_D98B					;
 
-LDA $00						;platform bit x-pos
+LDA TEMP_EntityXPosition			;platform bit x-pos
 CLC						;
 ADC $08						;+offset
-STA $00						;new x-pos
+STA TEMP_EntityXPosition			;new x-pos
 
-DEC $01						;higher by 1 pixel
+DEC TEMP_EntityYPosition			;higher by 1 pixel
 INC Platform_ShiftIndex				;check slightly higher
 
 LDA $09						;
@@ -5024,76 +5011,76 @@ CODE_DA4C:
 LDX Barrel_CurrentIndex				; 
 LDA Barrel_State,X				;various barrel states w/ very specific values
 CMP #Barrel_State_Init				;general initialization, become vertical or horizontal
-BEQ CODE_DA7D					;
+BEQ Long_HandleBarrel_State_Init_DA7D		;
 CMP #Barrel_State_HorzTossInit			;appear to the side and start moving
-BEQ CODE_DA80					;
+BEQ Long_HandleBarrel_State_HorzTossInit_DA80	;
 CMP #Barrel_State_HorzMovement			;
-BEQ CODE_DA83					;horizontal move on platform
+BEQ Long_HandleBarrel_State_HorzMovement_DA83	;horizontal move on platform
 CMP #Barrel_State_GoDownLadder			;
-BEQ CODE_DA86					;going down a ladder
+BEQ Long_HandleBarrel_State_GoDownLadder_DA86	;going down a ladder
 CMP #Barrel_State_VertMovement			;
-BEQ CODE_DA89					;tossed down
+BEQ Long_HandleBarrel_State_VertToss_DA89	;tossed down
 CMP #Barrel_State_VertMovementBounce		;
-BEQ CODE_DA89					;bounced off a platform on its tossed way down
+BEQ Long_HandleBarrel_State_VertToss_DA89	;bounced off a platform on its tossed way down
 CMP #Barrel_State_HorzMovementAfterVertToss	;
-BEQ CODE_DA89					;recover from being tossed down and move horizontally
+BEQ Long_HandleBarrel_State_VertToss_DA89	;recover from being tossed down and move horizontally
 CMP #Barrel_State_DropOffPlatform		;
-BEQ CODE_DA8F					;didnt go down any of the ladders and approached a ledge end... uh oh!
+BEQ Long_HandleBarrel_State_DropOffPlatform_DA8F;didnt go down any of the ladders and approached a ledge end... uh oh!
 CMP #Barrel_State_LandedOnPlatform		;
-BEQ CODE_DA92					;after landing on the platform, bounce
+BEQ Long_HandleBarrel_State_LandedOnPlatform_DA92;after landing on the platform, bounce
 CMP #Barrel_State_GoOffscreen			;
-BEQ CODE_DA95					;after landing on the platform, just go offscreen
+BEQ Long_HandleBarrel_State_GoOffscreen_DA95	;after landing on the platform, just go offscreen
 CMP #Barrel_State_GoDownPanic			;
-BEQ CODE_DA98					;vertical movement, except it's from the hammer threat
+BEQ Long_HandleBarrel_State_GoDownPanic_DA98	;vertical movement, except it's from the hammer threat (or from the threat of overloading the platform)
 RTS						;unused RTS. Cool.
 
-CODE_DA7D:
-JMP CODE_DA9C					;toss init
+Long_HandleBarrel_State_Init_DA7D:
+JMP HandleBarrel_State_Init_DA9C		;toss init
 
-CODE_DA80:
-JMP CODE_DB00					;toss side init
+Long_HandleBarrel_State_HorzTossInit_DA80:
+JMP HandleBarrel_State_HorzTossInit_DB00	;toss side init
 
-CODE_DA83:
-JMP CODE_DB2C					;horizontally move like normal
+Long_HandleBarrel_State_HorzMovement_DA83:
+JMP HandleBarrel_State_HorzMovement_DB2C	;horizontally move like normal
 
-CODE_DA86:
-JMP CODE_DC30					;going down the ladder
+Long_HandleBarrel_State_GoDownLadder_DA86:
+JMP HandleBarrel_State_GoDownLadder_DC30	;going down the ladder
 
-CODE_DA89:
-LDA $0421,X					;all states related to being tossed down
-JMP CODE_DD8B					;
+Long_HandleBarrel_State_VertToss_DA89:
+LDA Barrel_VertTossPattern,X			;all states related to being tossed down
+JMP HandleBarrel_State_VertToss_DD8B		;
 
-CODE_DA8F:
-JMP CODE_DC69					;falling down from platform to platform
+Long_HandleBarrel_State_DropOffPlatform_DA8F:
+JMP HandleBarrel_State_DropOffPlatform_DC69	;falling down from platform to platform
 
-CODE_DA92:  
-JMP CODE_DCD0					;landed from platform to platform and bounces
+Long_HandleBarrel_State_LandedOnPlatform_DA92: 
+JMP HandleBarrel_State_LandedOnPlatform_DCD0	;landed from platform to platform and bounces
 
-CODE_DA95:
-JMP CODE_DD32					;go offscreen
+Long_HandleBarrel_State_GoOffscreen_DA95:
+JMP HandleBarrel_State_GoOffscreen_DD32		;go offscreen
 
-CODE_DA98:
-JSR CODE_DF07					;not JMP this time, HMM?
+Long_HandleBarrel_State_GoDownPanic_DA98:
+JSR HandleBarrel_State_GoDownPanic_DF07		;not JMP this time, HMM?
 RTS						;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;BARREL STATE - ABOUT TO BE TOSSED
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CODE_DA9C:
+HandleBarrel_State_Init_DA9C:
 JSR GetBarrelOAM_EFD5				;
 
 LDA #$30					;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 If Version = JP
   LDA #$30					;another minor optimization they did in revision 1. we had 30 already loaded before. nintendo was still incredibly lazy to clean up everything.
 endif
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA #Barrel_GFXFrame_Vertical1			;
-STA $02						;
-STX $04						;save OAM slot
+STA TEMP_EntityOAMTile				;
+STX TEMP_EntityOAMSlot				;save OAM slot
 JSR CODE_EADB					;draw the barrel
 
 LDA Timer_BarrelHold				;are we still holding the barrel?
@@ -5158,7 +5145,7 @@ RTS						;
 ;BARREL STATE - GOT TOSSED HORIZONTALLY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CODE_DB00:
+HandleBarrel_State_HorzTossInit_DB00:
 LDA #%01010101					;every other frame (for the entity's frame counter)
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DB21					;since the entity's frame counter was set to 0, first frame it won't trigger this, it'll init its position to the side and make kong display his frame
@@ -5166,14 +5153,14 @@ BNE CODE_DB21					;since the entity's frame counter was set to 0, first frame it
 JSR GetBarrelOAM_EFD5				;
 
 LDA #Barrel_HorzTossXPos			;set x-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA #Barrel_HorzTossYPos			;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA #Barrel_GFXFrame_UpRight			;
-STA $02						;
-STX $04						;barrel's OAM slot
+STA TEMP_EntityOAMTile				;
+STX TEMP_EntityOAMSlot				;barrel's OAM slot
 JSR CODE_EADB					;actually put the barrel on-screen
 
 INC Kong_TossToTheSideFlag			;show kong's "toss to the side" frame
@@ -5196,7 +5183,7 @@ RTS						;
 ;BARREL STATE - ROLLS HORIZONTALLY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CODE_DB2C:
+HandleBarrel_State_HorzMovement_DB2C:
 LDA #%11111111					;move every frame... which makes this call redundant
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DB34					;
@@ -5207,29 +5194,29 @@ JSR GetBarrelOAM_EFD5				;get barrel's OAM
 PHA						;
 JSR EntityPosToScratch_EAEC			;barrel's pos
 
-LDA $01						;
-JSR CODE_E016					;get which platform the barrel's on based on Y-pos
+LDA TEMP_EntityYPosition			;
+JSR GetEntitysPlatform_E016			;get which platform the barrel's on based on Y-pos
 
 LDY Barrel_CurrentIndex				;
 STA Barrel_CurrentPlatformIndex,Y		;depending on current platform, go left or right
 AND #$01					;
 BNE CODE_DB4E					;every other platfform it goes left
 
-INC $00						;move right
+INC TEMP_EntityXPosition			;move right
 JMP CODE_DB50					;
 
 CODE_DB4E:
-DEC $00						;move left
+DEC TEMP_EntityXPosition			;move left
 
 CODE_DB50:
-LDA $00						;
+LDA TEMP_EntityXPosition			;
 JSR CODE_E05A					;1 - crossed lower into the platform
 STA Barrel_ShiftDownFlag			;
 
 JSR CODE_E048					;check shift flag and everything
 CLC						;check if shifted down
-ADC $01						;new Y-pos
-STA $01						;
+ADC TEMP_EntityYPosition			;new Y-pos
+STA TEMP_EntityYPosition			;
 
 JSR CODE_DBEE					;animate the barrel
 
@@ -5240,7 +5227,7 @@ PLA						;
 TAX						;X - OAM!
 JSR CODE_F080					;redraw da barrel!
 
-LDA $00						;X-pos
+LDA TEMP_EntityXPosition			;X-pos
 JSR CODE_E0AE					;check for ladder
 BEQ CODE_DBAC					;if no laddder, don't try to go down
 
@@ -5261,7 +5248,7 @@ LDA Jumpman_State				;if player is climbing, always go down the ladder
 CMP #Jumpman_State_Climbing			;
 BNE CODE_DBA3					;
 
-LDX $04						;
+LDX TEMP_EntityOAMSlot				;
 LDA OAM_Y,X					;if the barrel is lower than (or at the same height as) the player
 CMP Jumpman_OAM_Y				;
 BCS CODE_DBA3					;always go down
@@ -5278,7 +5265,7 @@ DEC Barrel_CurrentPlatformIndex,X		;set to be on lower platform
 RTS						;
 
 CODE_DBAC:
-LDA $00						;x-pos
+LDA TEMP_EntityXPosition			;x-pos
 JSR CODE_E090					;check for platform edge
 BEQ CODE_DBB6					;not appraching an edge
 JMP CODE_DBE7					;yes drop
@@ -5293,7 +5280,7 @@ BNE RETURN_DBED					;if not on lowest platform, return
 
 JSR CODE_DFC3					;background priority
 
-LDA $00						;check X-pos for oil barrel
+LDA TEMP_EntityXPosition			;check X-pos for oil barrel
 CMP #$20					;
 BEQ CODE_DBCD					;equal or less, spawn flame
 BCC CODE_DBCD					;
@@ -5301,10 +5288,10 @@ RTS						;
 
 CODE_DBCD:
 LDA #Barrel_OAMProp				;that removes BG priority bit
-STA $02						;
+STA TEMP_EntityOAMProp				;
 
 LDA #$04					;the barrel consists of 4 8x8 tiles, so remove 4 tiles.
-STA $03						;
+STA TEMP_EntityGFXSize				;
 
 JSR CODE_F08E					;remove barrel
 
@@ -5381,16 +5368,16 @@ RTS						;
 ;BARREL STATE - MOVES DOWN THE LADDER
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CODE_DC30:
+HandleBarrel_State_GoDownLadder_DC30:
 LDA #%01010101					;only update every other frame
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BEQ RETURN_DC68					;return on odd frames
 
 JSR GetBarrelOAM_EFD5				;
-STX $04						;remember OAM slot
+STX TEMP_EntityOAMSlot			;remember OAM slot
 
 JSR EntityPosToScratch_EAEC			;
-INC $01						;go down one pixel
+INC TEMP_EntityYPosition			;go down one pixel
 
 LDY Barrel_CurrentIndex				;why Y btw? to waste a whopping byte?
 LDA Barrel_GFXFrame,Y				;no zero page,y for you
@@ -5404,13 +5391,13 @@ CODE_DC4F:
 LDA #Barrel_GFXFrame_Vertical1			;
 
 CODE_DC51:
-STA $02						;
+STA TEMP_EntityOAMTile			;
 
 LDX Barrel_CurrentIndex				;
 STA Barrel_GFXFrame,X				;
 JSR CODE_EADB					;redraw
 
-LDA $01						;check y-pos
+LDA TEMP_EntityYPosition			;check y-pos
 LDX Barrel_CurrentIndex				;
 CMP Barrel_LadderYDestination,X			;did it reach the end of the ladder?
 BNE RETURN_DC68					;
@@ -5427,7 +5414,7 @@ RTS						;
 ;BARREL STATE - FELL OFF (OFF THE PLATFORM)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CODE_DC69:
+HandleBarrel_State_DropOffPlatform_DC69:
 LDA #%11111111					;
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DC71					;always runs so this is pointless.
@@ -5435,13 +5422,13 @@ RTS						;NOT EXECUTED, duh!
 
 CODE_DC71:
 JSR GetBarrelOAM_EFD5				;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 
 JSR EntityPosToScratch_EAEC			;
 
-INC $01						;vertical move down 1 pixel
+INC TEMP_EntityYPosition			;vertical move down 1 pixel
 
-LDA $01						;only move horizontally every y-position increment (basically every other frame)
+LDA TEMP_EntityYPosition			;only move horizontally every y-position increment (basically every other frame)
 AND #$01					;
 BEQ CODE_DC90					;
 
@@ -5450,24 +5437,24 @@ LDA Barrel_CurrentPlatformIndex,X		;move left or right
 AND #$01					;
 BEQ CODE_DC8E					;
 
-DEC $00						;move left
+DEC TEMP_EntityXPosition			;move left
 JMP CODE_DC90					;
 
 CODE_DC8E:
-INC $00						;move right
+INC TEMP_EntityXPosition			;move right
 
 CODE_DC90:
 JSR CODE_DBEE					;animate
 
 LDX Barrel_CurrentIndex				;
 LDA Barrel_GFXFrame,X				;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 JSR CODE_EADB					;update barrel GFX
 
 LDA #$32					;indirect access to DATA_C1CF
 JSR CODE_C853					;
 
-LDA $01						;check if landed on lower platform
+LDA TEMP_EntityYPosition			;check if landed on lower platform
 JSR CODE_E112					;
 BEQ RETURN_DCCF					;
 
@@ -5506,7 +5493,7 @@ RTS						;
 ;BARREL STATE - BOUNCE FROM LANDING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CODE_DCD0:
+HandleBarrel_State_LandedOnPlatform_DCD0:
 LDA #%01110111					;skip every 4th frame
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DCD8					;
@@ -5514,21 +5501,21 @@ RTS						;
 
 CODE_DCD8:
 JSR GetBarrelOAM_EFD5				;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 
 JSR EntityPosToScratch_EAEC			;
 
-LDA $01						;
-JSR CODE_E016					;get which platform's on
+LDA TEMP_EntityYPosition			;
+JSR GetEntitysPlatform_E016			;get which platform's on
 
 LDX Entity_TimingIndex				;
 STA Barrel_CurrentPlatformIndex,X		;
 AND #$01					;depending on the platform, it'll bounce to the right or to the left (where it should roll normally)
 BNE CODE_DD00					;
 
-INC $00						;roll right
+INC TEMP_EntityXPosition			;roll right
 
-LDA $00						;
+LDA TEMP_EntityXPosition			;
 LDX #$00					;
 
 LOOP_DCF3:
@@ -5540,9 +5527,9 @@ BEQ CODE_DD25					;
 JMP LOOP_DCF3					;
 
 CODE_DD00:
-DEC $00						;roll left
+DEC TEMP_EntityXPosition			;roll left
 
-LDA $00						;
+LDA TEMP_EntityXPosition			;
 LDX #$00					;
 
 LOOP_DD06:
@@ -5554,10 +5541,10 @@ BEQ CODE_DD25					;
 JMP LOOP_DD06					;
 
 CODE_DD13:
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 CLC						;
 ADC DATA_C407,X					;
-STA $01						;change its y-position
+STA TEMP_EntityYPosition			;change its y-position
 CPX #$0A					;
 BNE CODE_DD25					;check if done with this bounce motion thing, if not, don't snap out of it
 
@@ -5570,11 +5557,15 @@ JSR CODE_DBEE					;standard animation
 
 LDX Barrel_CurrentIndex				;
 LDA Barrel_GFXFrame,X				;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 JSR CODE_EADB					;update its gfx
 RTS						;
 
-CODE_DD32:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;BARREL STATE - LEAVES THE STAGE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+HandleBarrel_State_GoOffscreen_DD32:
 LDA #%01010101					;move every other frame...
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DD3A					;
@@ -5582,42 +5573,42 @@ RTS						;
 
 CODE_DD3A:
 JSR GetBarrelOAM_EFD5				;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 
 JSR EntityPosToScratch_EAEC			;
 
-LDA $01						;
-JSR CODE_E016					;grab the platform by its tail (err, I mean its value)
+LDA TEMP_EntityYPosition			;
+JSR GetEntitysPlatform_E016			;grab the platform by its tail (err, I mean its value)
 
 LDX Barrel_CurrentIndex				;
 STA Barrel_CurrentPlatformIndex,X		;go offscreen left or right, depending on the platform
 AND #$01					;
 BNE CODE_DD60					;
 
-DEC $00						;go left
+DEC TEMP_EntityXPosition			;go left
 
-LDA $01						;I guess this is supposed to fix its y-position?
+LDA TEMP_EntityYPosition			;I guess this is supposed to fix its y-position?
 CMP #$14					;
 BNE CODE_DD59					;
 
-DEC $01						;untriggered (supposed to move the barrel up)
+DEC TEMP_EntityYPosition			;untriggered (supposed to move the barrel up)
 
 CODE_DD59:
-LDA $00						;check for left end of the screen
+LDA TEMP_EntityXPosition			;check for left end of the screen
 BNE CODE_DD73					;
 JMP CODE_DD7F					;if it reached the screen boundary, should disappear
 
 CODE_DD60:
-INC $00						;go right
+INC TEMP_EntityXPosition			;go right
 
-LDA $01						;another edge case, y-position where it shouldn't be
+LDA TEMP_EntityYPosition			;another edge case, y-position where it shouldn't be
 CMP #$EC					;
 BNE CODE_DD6A					;rules are made to follow, so it does, in fact, not reach that
 
-DEC $01						;untriggered (again, move the barrel up)
+DEC TEMP_EntityYPosition			;untriggered (again, move the barrel up)
 
 CODE_DD6A:
-LDA $00						;
+LDA TEMP_EntityXPosition			;
 CMP #$F4					;check if reached the right end of the screen
 BNE CODE_DD73					;
 JMP CODE_DD7F					;disappear
@@ -5627,7 +5618,7 @@ JSR CODE_DBEE					;animation is hard
 
 LDX Barrel_CurrentIndex				;
 LDA Barrel_GFXFrame,X				;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 JMP CODE_EADB					;surprised its a JMP this time instead of JSR : RTS
 
 CODE_DD7F:
@@ -5643,7 +5634,7 @@ RTS						;
 ;BARREL STATE - TOSSED DOWN (3 SEPARATE STATES IN ONE)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CODE_DD8B:
+HandleBarrel_State_VertToss_DD8B:
 STA $07						;saves Barrel_VertTossPattern,x
 
 LDX Barrel_CurrentIndex				;
@@ -5677,7 +5668,7 @@ CODE_DDB2:
 JSR CODE_C853					;get the pointer to these values
 
 JSR GetBarrelOAM_EFD5				;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 
 LDA OAM_Y,X					;
 JSR CODE_E112					;check if the barrel hit any platforms lately
@@ -5701,7 +5692,7 @@ STA Barrel_State,X				;
 ;STATE Barrel_State_VertMovementBounce (also executed when in state Barrel_State_VertMovement as well)
 CODE_DDD7:
 JSR GetBarrelOAM_EFD5				;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 
 LDX Barrel_CurrentIndex				;
 LDA Barrel_State,X				;
@@ -5712,9 +5703,9 @@ LDA #%00100000					;runs after 8 frames (together would be 0010000000100000, whi
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DDF5					;(actually, it'll SKIP every 8 frames?)
 
-LDX $04						;
+LDX TEMP_EntityOAMSlot				;
 LDA OAM_Y,X					;
-STA $01						;
+STA TEMP_EntityYPosition			;
 JMP CODE_DE27					;
 
 CODE_DDF5:
@@ -5747,11 +5738,11 @@ JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BEQ RETURN_DE85					;
 
 CODE_DE1A:
-LDX $04						;
+LDX TEMP_EntityOAMSlot				;
 LDA #$01					;
 CLC						;move down 1 px
 ADC OAM_Y,X					;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 JSR CODE_DE86					;more down movement..........
 
@@ -5772,7 +5763,7 @@ CODE_DE36:
 CMP #$03					;move left AND right
 BNE CODE_DE56					;
 
-LDA $01						;every other y-pos pixel...
+LDA TEMP_EntityYPosition			;every other y-pos pixel...
 AND #$01					;
 BEQ CODE_DE56					;
 
@@ -5790,7 +5781,7 @@ DEC OAM_X-3,X					;
 
 CODE_DE56:
 LDA OAM_X-3,X					;
-STA $00						;final x-pos
+STA TEMP_EntityXPosition			;final x-pos
 
 LDX Barrel_CurrentIndex				;
 LDA Barrel_GFXFrame,X				;animate the barrel and its silly vertical movement
@@ -5804,7 +5795,7 @@ CODE_DE68:
 LDA #Barrel_GFXFrame_Vertical1			;
 
 CODE_DE6A:
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 LDX Barrel_CurrentIndex				;
 STA Barrel_GFXFrame,X				;resulting frame
@@ -5815,7 +5806,7 @@ LDA #Barrel_State_HorzMovementAfterVertToss	;landed on the last platform, will t
 LDX Barrel_CurrentIndex				;
 STA Barrel_State,X				;
 
-LDX $04						;
+LDX TEMP_EntityOAMSlot				;
 LDA OAM_X,X					;
 STA Barrel_VertTossLandingXPos			;landed at this pos
 RTS						;
@@ -5834,7 +5825,7 @@ CMP #Barrel_VertTossPattern_StraightDown	;if so, don't care
 BNE RETURN_DEA4					;
 
 LDY #$00					;
-LDA $01						;y-pos check
+LDA TEMP_EntityYPosition			;y-pos check
 
 LOOP_DE90:
 CMP DATA_C41D,Y					;
@@ -5842,7 +5833,7 @@ BCC CODE_DE9F					;lower than this position...
 CMP DATA_C420,Y					;
 BCS CODE_DE9F					;
 
-INC $01						;
+INC TEMP_EntityYPosition			;
 JMP RETURN_DEA4					;not enough RTS
 
 CODE_DE9F:
@@ -5855,36 +5846,36 @@ RTS						;
 
 CODE_DEA5:
 JSR GetBarrelOAM_EFD5				;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 
 JSR EntityPosToScratch_EAEC			;
-DEC $00						;moves to the left
+DEC TEMP_EntityXPosition			;moves to the left
 
 ;various checks, depending on how far it has gone from its landing position.
 LDA Barrel_VertTossLandingXPos			;
 SEC						;
 SBC #$01					;
-CMP $00						;if moved one pixel...
+CMP TEMP_EntityXPosition			;if moved one pixel...
 BEQ CODE_DEE8					;adjust its y-position (move up)
 SEC						;
 SBC #$01					;
-CMP $00						;if moved two pixels...
+CMP TEMP_EntityXPosition			;if moved two pixels...
 BEQ CODE_DEE8					;MORE Y-POS ADJUSTIN (UP)
 SEC						;
 SBC #$01					;
-CMP $00						;if moved 3 pixels...
+CMP TEMP_EntityXPosition			;if moved 3 pixels...
 BEQ CODE_DEF2					;check if it should turn into a normal barrel, depending on wether it was a simple straight moving barrel, or a left & right one
 SEC						;
 SBC #$08					;
-CMP $00						;if moved 11 pixels...
+CMP TEMP_EntityXPosition			;if moved 11 pixels...
 BEQ CODE_DEED					;adjust y-pos, but this time it moves down (this simulates a standard bounce off the platform thing
 SEC						;
 SBC #$01					;
-CMP $00						;if moved 12 pixels..
+CMP TEMP_EntityXPosition			;if moved 12 pixels..
 BEQ CODE_DEED					;adjust y-pos yet again, down
 SEC						;
 SBC #$01					;
-CMP $00						;if moved 13 pixels...
+CMP TEMP_EntityXPosition			;if moved 13 pixels...
 BNE CODE_DEFB					;just display graphics, it'll turn into a normal barrel next time
 
 CODE_DEDC:
@@ -5897,11 +5888,11 @@ STA Barrel_VertTossHorzMovementDir,X		;
 RTS						;
 
 CODE_DEE8:
-DEC $01						;move up
+DEC TEMP_EntityYPosition			;move up
 JMP CODE_DEFB					;
 
 CODE_DEED:
-INC $01						;move down
+INC TEMP_EntityYPosition			;move down
 JMP CODE_DEFB					;
 
 CODE_DEF2:
@@ -5914,7 +5905,7 @@ CODE_DEFB:
 LDA #Barrel_GFXFrame_UpRight			;display horizontal gfx
 LDX Barrel_CurrentIndex				;
 STA Barrel_GFXFrame,X				;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 JSR CODE_EADB					;update barrel gfx and pos and everything
 RTS						;
@@ -5923,7 +5914,7 @@ RTS						;
 ;BARREL STATE - MOVES DOWN FROM HAMMER JUMPSCARE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CODE_DF07:
+HandleBarrel_State_GoDownPanic_DF07:
 LDA #%01010101					;move every other frame
 JSR PlatformAndBarrelTiming_BothBytes_DFE4	;
 BNE CODE_DF0F					;
@@ -5931,11 +5922,11 @@ RTS						;
 
 CODE_DF0F:
 JSR GetBarrelOAM_EFD5				;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 
 JSR EntityPosToScratch_EAEC			;
 
-INC $01						;down 1px
+INC TEMP_EntityYPosition			;down 1px
 
 LDA OAM_Tile,X					;animate
 CMP #Barrel_GFXFrame_Vertical1			;
@@ -5948,12 +5939,12 @@ CODE_DF25:
 LDA #Barrel_GFXFrame_Vertical2			;
 
 CODE_DF27:
-STA $02						;correct gfx
+STA TEMP_EntityOAMTile				;correct gfx
 
 JSR CODE_EADB					;refresh barrel image
 
 LDA Barrel_EscapeYDestination			;check if it has reached the lower platform
-CMP $01						;
+CMP TEMP_EntityYPosition			;
 BEQ CODE_DF35					;whew, safe from that maniac
 BCC CODE_DF35					;become normal
 RTS						;
@@ -5984,7 +5975,7 @@ CODE_DF4C:
 LDA Jumpman_CurrentPlatformIndex		;this platform
 CMP #$03					;
 BEQ CODE_DF55					;
-JMP CODE_DF72					;(otherwise on the 5th platform
+JMP CODE_DF72					;(otherwise on the 5th platform)
 
 CODE_DF55:
 LDX #$03					;check if there are 5 entities on platform 3 (Jumpman+Hammer is already 2, so we need three barrels)
@@ -6050,16 +6041,16 @@ ASL A						;
 ASL A						;
 TAY						;calculate barrel's OAM slot
 LDA OAM_Y,Y					;
-STA $01						;the usual x/y stuff
+STA TEMP_EntityYPosition			;the usual x/y stuff
 
 LDA OAM_X,Y					;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA DATA_C1EB					;loading a constant table value instead of the constant...
 LDY #$00					;
 
 LOOP_DFAD:
-CMP $00						;if its x-pos is...
+CMP TEMP_EntityXPosition			;if its x-pos is...
 BCS CODE_DFB8					;at or to the right of the x-position we're comparing to
 CLC						;
 ADC #$18					;even right-er (every 3 8x8 tiles)
@@ -6072,7 +6063,7 @@ ASL A						;
 CLC						;
 ADC #$15					;moves at least 21 pixels down
 CLC						;
-ADC $01						;and barrel's y-pos
+ADC TEMP_EntityYPosition			;and barrel's y-pos
 STA Barrel_EscapeYDestination			;move down to this position
 RTS						;
 
@@ -6164,11 +6155,11 @@ endif
 RETURN_E015:
 RTS						;
 
+;calculate which platform the entity is on
 ;$08-09 - Indirect addressing pointer
-;$0A - Y-position of Jumpman (or any entity) (sometimes offset)
-;$0B - platform index the player's on (or slightly above)
-;GetCurrentPlatform_E016
-CODE_E016:
+;$0A - Y-position ofthe entity (sometimes offset)
+;$0B - platform index the entity is on (or slightly above)
+GetEntitysPlatform_E016:
 STA $0A						;
 
 LDA PhaseNo					;get Y-positions for platforms depending on phase
@@ -6176,10 +6167,10 @@ SEC						;
 SBC #$01					;
 ASL A						;
 TAX						;
-LDA DATA_C493,X					;
+LDA StagePlatformYPositionPointers_C493,X	;
 STA $08						;
 
-LDA DATA_C493+1,X				;
+LDA StagePlatformYPositionPointers_C493+1,X	;
 STA $09						;
 
 LDY #$00					;
@@ -6188,12 +6179,13 @@ STA $0B						;
 
 LOOP_E02F:
 LDA ($08),Y					;
-CMP #$FF					;
-BEQ CODE_E041					;
+CMP #$FF					;encountered this
+BEQ CODE_E041					;set the default
 CMP $0A						;check if at the same Y position OR below
 BEQ CODE_E045					;
-BCC CODE_E045					;
-INC $0B						;
+BCC CODE_E045					;on that level
+
+INC $0B						;next height
 INY						;
 JMP LOOP_E02F					;
 
@@ -6407,7 +6399,7 @@ LDA OAM_Y,Y					;
 CMP #$FF					;
 BEQ CODE_E157					;
 
-JSR CODE_E016					;see what platform it's on
+JSR GetEntitysPlatform_E016			;see what platform it's on
 STA Barrel_CurrentPlatformIndex,X		;
 JMP CODE_E15B					;
 
@@ -6483,16 +6475,16 @@ BNE CODE_E1BF					;
 
 ;initalize oil flame (is it used multiple times (each time new flame is spawned)
 LDA #Flame_XPos					;flame X-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA #Flame_YPos					;y-pos
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA #Flame_GFXFrame_Frame1			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 LDA #$12					;only 1 row 2 bytes wide
-STA $03						;
+STA TEMP_EntityGFXSize				;
 
 LDA #Flame_OAM_Slot*4				;
 JSR CODE_F080					;draw em
@@ -6626,17 +6618,17 @@ LDA FlameEnemy_State,X				;check for state
 
 CODE_E254:
 AND #$0F					;if flame enemy state isn't in range between 00-0F
-BEQ CODE_E292					;just animate i think
+BEQ Long_HandleFlameEnemy_State_AnimateInPlace_E292 ;just animate i think (oof, that;s a big label!)
 CMP #FlameEnemy_State_SpawnINIT			;
-BEQ CODE_E28F					;init spawn
+BEQ Long_HandleFlameEnemy_State_Spawn_E28F	;init spawn
 CMP #FlameEnemy_State_SpawnFromOil		;
-BEQ CODE_E28F					;actual spawn
+BEQ Long_HandleFlameEnemy_State_Spawn_E28F	;actual spawn
 CMP #FlameEnemy_State_MoveRight			;
-BEQ CODE_E295					;move right i think
+BEQ Long_HandleFlameEnemy_State_MoveRight_E295	;move right i think
 CMP #FlameEnemy_State_MoveLeft			;
-BEQ CODE_E29A					;move left i think
+BEQ Long_HandleFlameEnemy_State_MoveLeft_E29A	;move left i think
 CMP #FlameEnemy_State_LadderUp			;
-BEQ CODE_E2A1					;covers both up and down (down is the same with a filtered bit)
+BEQ Long_HandleFlameEnemy_State_Ladder_E2A1	;covers both up and down (down is the same with a filtered bit)
 
 LDA PhaseNo					;
 CMP #Phase_75M					;if phase is 75M
@@ -6664,24 +6656,25 @@ STA FlameEnemy_Direction,X			;decide direction for when standing still
 CODE_E28C:
 JMP CODE_E254					;process new state
 
-CODE_E28F:
-JMP CODE_E538					;handle flame enemy spawn
+;for both FlameEnemy_State_SpawnINIT and FlameEnemy_State_SpawnFromOil
+Long_HandleFlameEnemy_State_Spawn_E28F:
+JMP HandleFlameEnemy_State_Spawn_E538		;handle flame enemy spawn
 
-CODE_E292:
-JMP CODE_E2F9					;move down and up when standing still (animation)
+Long_HandleFlameEnemy_State_AnimateInPlace_E292:
+JMP HandleFlameEnemy_State_AnimateInPlace_E2F9	;move down and up when standing still (animation)
 
-CODE_E295:
+Long_HandleFlameEnemy_State_MoveRight_E295:
 LDA #$00					;moving right
 JMP CODE_E29C					;
 
-CODE_E29A:
+Long_HandleFlameEnemy_State_MoveLeft_E29A:
 LDA #$01					;moving left
 
 CODE_E29C:
 STA FlameEnemy_MoveDirection			;
-JMP CODE_E368					;process movement and stuff
+JMP HandleFlameEnemy_State_MoveHorz_E368	;process movement and stuff
 
-CODE_E2A1:
+Long_HandleFlameEnemy_State_Ladder_E2A1:
 LDA PhaseNo					;check phase...
 CMP #Phase_25M					;
 BNE CODE_E2B3					;
@@ -6690,10 +6683,10 @@ JSR CODE_E626					;check if its still climbing a ladder I guess
 LDX FlameEnemy_CurrentIndex			;
 LDA FlameEnemy_State,X				;
 BNE CODE_E2B3					;see if it's climbing a ladder
-JMP CODE_E292					;animate
+JMP Long_HandleFlameEnemy_State_AnimateInPlace_E292 ;animate
 
 CODE_E2B3:
-JMP CODE_E41B					;ladder stuff
+JMP HandleFlameEnemy_State_Ladder_E41B		;ladder stuff
 
 CODE_E2B6:
 LDX FlameEnemy_CurrentIndex			;
@@ -6746,7 +6739,7 @@ CODE_E2F6:
 STY FlameEnemy_State,X				;
 RTS						;
 
-CODE_E2F9:
+HandleFlameEnemy_State_AnimateInPlace_E2F9:
 LDA #%01010101					;animate every other frame
 STA $0A						;
 STA $0B						;
@@ -6758,7 +6751,8 @@ RTS						;
 ;animate when standing still (move up 'n down graphically)
 CODE_E305:
 JSR GetFlameEnemyOAM_EFDD			;get flame's OAM slots
-STX $04						;store em here
+STX TEMP_EntityOAMSlot				;store em here
+
 JSR EntityPosToScratch_EAEC			;
 
 LDX FlameEnemy_CurrentIndex			;
@@ -6774,15 +6768,15 @@ CODE_E31A:
 CMP #FlameEnemy_State_GFXShiftUp		;
 BEQ CODE_E323					;
 
-DEC $01						;move down
+DEC TEMP_EntityYPosition			;move down
 JMP CODE_E325					;
 
 CODE_E323:
-INC $01						;
+INC TEMP_EntityYPosition			;
 
 ;i keep seeing the same repeated code, see CODE_E3ED. this one for animation when on the ladder
 CODE_E325:
-LDA $04						;OAM
+LDA TEMP_EntityOAMSlot				;OAM
 TAY						;
 INY						;get tile (not Y-pos)
 LDA OAM_Y,Y					;
@@ -6833,7 +6827,7 @@ STA FlameEnemy_State,X				;
 RTS						;
 
 ;movement?
-CODE_E368:
+HandleFlameEnemy_State_MoveHorz_E368:
 LDA #%01010101					;
 STA $0A						;run the code every other frame
 STA $0B						;
@@ -6844,20 +6838,20 @@ RTS						;also also
 
 CODE_E374:
 JSR GetFlameEnemyOAM_EFDD			;get OAM
-STX $04						;temp store
+STX TEMP_EntityOAMSlot				;temp store
 JSR EntityPosToScratch_EAEC			;
 
 LDA FlameEnemy_MoveDirection			;this is enemy's direction
 BNE CODE_E385					;if moving left, mvoe left
 
-INC $00						;move right
+INC TEMP_EntityXPosition			;move right
 JMP CODE_E387					;
 
 CODE_E385:
-DEC $00						;move left
+DEC TEMP_EntityXPosition			;move left
 
 CODE_E387:
-LDA $00						;move up'n down at certain positions
+LDA TEMP_EntityXPosition			;move up'n down at certain positions
 AND #$0F					;
 CMP #$04					;
 BEQ CODE_E396					;
@@ -6866,10 +6860,10 @@ BEQ CODE_E396					;
 JMP CODE_E39B					;
 
 CODE_E396:
-INC $01						;one pixel down
+INC TEMP_EntityYPosition			;one pixel down
 JMP CODE_E3AF					;
 
-CODE_E39B: 
+CODE_E39B:
 LDX FlameEnemy_MoveDirection			;bop up depending on the position (within 16x16 tile range)
 CMP DATA_C3E2,X					;and depending on the movement  direction
 BEQ CODE_E3AA					;
@@ -6878,7 +6872,7 @@ BEQ CODE_E3AA					;
 JMP CODE_E3AF					;
 
 CODE_E3AA:
-DEC $01						;y-position one pixel up
+DEC TEMP_EntityYPosition			;y-position one pixel up
 JMP CODE_E3C0					;
 
 CODE_E3AF:
@@ -6908,7 +6902,7 @@ CODE_E3CE:
 LDA FlameEnemy_MoveDirection			;hardcoded check for ladder pos depending on direction
 BEQ CODE_E3ED					;moving right, no worries
 
-LDA $00						;we already had this check before, didn't we??? (it was a MoveDirection and a table check, at CODE_E6E3)
+LDA TEMP_EntityXPosition			;we already had this check before, didn't we??? (it was a MoveDirection and a table check, at CODE_E6E3)
 CMP #$0C					;
 BEQ CODE_E3DD					;if at this position, make sure to think about moving further
 BCC CODE_E3E6					;don't move if less, please turn away
@@ -6928,7 +6922,7 @@ RTS						;
 
 ;another routine related with animation, CODE_E50C is similar to this
 CODE_E3ED:
-LDA $04						;
+LDA TEMP_EntityOAMSlot				;
 TAY						;
 INY						;get sprite tile
 LDA OAM_Y,Y					;
@@ -6962,7 +6956,7 @@ LDA FlameEnemy_MoveDirection			;draw flip according to movement direction
 JMP SpriteDrawingEngine_F096			;
 
 ;climbing a ladder
-CODE_E41B:
+HandleFlameEnemy_State_Ladder_E41B:
 LDX FlameEnemy_CurrentIndex			;
 LDA FlameEnemy_State,X				;
 LSR A						;
@@ -7002,7 +6996,7 @@ RTS						;
 
 CODE_E451:
 JSR GetFlameEnemyOAM_EFDD			;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 JSR EntityPosToScratch_EAEC			;
 
 LDX FlameEnemy_CurrentIndex			;
@@ -7019,7 +7013,7 @@ JMP CODE_E47A					;
 
 ;TEMP_YPosition
 CODE_E46D:
-LDA $01						;every 4th pixel (vertically)
+LDA TEMP_EntityYPosition			;every 4th pixel (vertically)
 AND #$03					;
 BNE CODE_E47A					;
 
@@ -7040,18 +7034,18 @@ BEQ CODE_E49B					;move down
 JMP CODE_E50C					;just animation
 
 CODE_E48E:
-DEC $01						;move up 1px
+DEC TEMP_EntityYPosition			;move up 1px
 
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 LDX FlameEnemy_CurrentIndex			;
 CMP FlameEnemy_LadderEndYPos,X			;check if reached the end of the ladder
 BEQ CODE_E4A8					;will stop climbing
 JMP CODE_E50C					;
 
 CODE_E49B:
-INC $01						;move down 1px
+INC TEMP_EntityYPosition			;move down 1px
 
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 LDX FlameEnemy_CurrentIndex			;again, check if 
 CMP FlameEnemy_LadderEndYPos,X			;
 BEQ CODE_E4A8					;
@@ -7074,14 +7068,14 @@ BEQ CODE_E4C0					;
 JMP CODE_E4D6					;otherwise moves up, naturally
 
 CODE_E4C0:
-INC $01						;move down 1px
+INC TEMP_EntityYPosition			;move down 1px
 
 LDA FlameEnemy_CurrentIndex			;
 ASL A						;
 TAX						;
 INX						;
 LDA FlameEnemy_LadderBoundary,X			;
-CMP $01						;check if on ground level
+CMP TEMP_EntityYPosition			;check if on ground level
 BNE CODE_E4D3					;
 
 LDA #FlameEnemy_State_MoveRight			;move right... again (is that even right?)
@@ -7092,7 +7086,7 @@ CODE_E4D3:
 JMP CODE_E50C					;animation stuff
 
 CODE_E4D6:
-DEC $01						;1 pixel up
+DEC TEMP_EntityYPosition			;1 pixel up
 LDX FlameEnemy_CurrentIndex			;
 CPX #$00					;hmm, yeah
 BNE CODE_E4F9					;
@@ -7106,7 +7100,7 @@ LDA FlameEnemy_CurrentIndex			;
 ASL A						;
 TAX						;
 LDA FlameEnemy_LadderBoundary,X			;
-CMP $01						;see if climbed up the ladder fully
+CMP TEMP_EntityYPosition			;see if climbed up the ladder fully
 BNE CODE_E50C					;
 
 LDA #FlameEnemy_State_MoveLeft			;will move left
@@ -7121,7 +7115,7 @@ TAX						;
 LDA FlameEnemy_LadderBoundary,X			;
 CLC						;
 ADC #$0D					;check if at this position but a bit lower
-CMP $01						;
+CMP TEMP_EntityYPosition			;
 BNE CODE_E50C					;that would be third platform's y-position otherwise
 
 LDA #FlameEnemy_State_LadderDown		;prevent from going too high up the stage. coward!
@@ -7131,7 +7125,7 @@ STA FlameEnemy_State,X				;
 ;animate da flame (AGAIN)
 ;this is pretty much a copy-paste of CODE_E3ED (with a few differences)
 CODE_E50C:
-LDA $04						;
+LDA TEMP_EntityOAMSlot				;
 TAY						;
 INY						;get tile
 LDA OAM_Y,Y					;
@@ -7163,7 +7157,7 @@ JSR SpriteDrawingPREP_StoreTile_EAD4		;prep
 JMP CODE_F088					;draw the flame
 
 ;handle special kinda flames
-CODE_E538:
+HandleFlameEnemy_State_Spawn_E538:
 LDX FlameEnemy_CurrentIndex			;
 LDA FlameEnemy_State,X				;
 CMP #FlameEnemy_State_SpawnINIT			;spawn from oil barrel (init)
@@ -7186,10 +7180,10 @@ RTS						;untriggered
 ;spawn a flame enemy from lit up oil barrel
 CODE_E553:
 LDA #$20					;set initial positions
-STA $00						;this is X-pos
+STA TEMP_EntityXPosition			;this is X-pos
 
 LDA #$B8					;Y-pos
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDX FlameEnemy_CurrentIndex			;
 LDA #FlameEnemy_State_SpawnFromOil		;spawn from the oil barrel
@@ -7218,10 +7212,10 @@ CLC						;
 ADC $0C						;spawn on the left or the right
 TAX						;
 LDA DATA_C3CE,X					;
-STA $00						;X-pos
+STA TEMP_EntityXPosition			;X-pos
 
 LDA DATA_C3CE+1,X				;
-STA $01						;and Y-pos
+STA TEMP_EntityYPosition			;and Y-pos
 
 LDX FlameEnemy_CurrentIndex			;
 LDA #$00					;no init
@@ -7236,13 +7230,13 @@ LDA #FlameEnemy_GFXFrame_Frame1			;
 CODE_E594:
 JSR SpriteDrawingPREP_StoreTile_EAD4		;
 JSR GetFlameEnemyOAM_EFDD			;get OAM
-STA $04						;
+STA TEMP_EntityOAMSlot				;
 JMP CODE_F082					;a new challenger approaches...
 
 ;the flame that jumps out of the oil barrel
 CODE_E59F:
 JSR GetFlameEnemyOAM_EFDD			;get flame's proper OAM slots
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 JSR EntityPosToScratch_EAEC			;and position
 
 LDA OAM_Tile,X					;ok? (doesn't actually update the sprite tile number)
@@ -7254,16 +7248,16 @@ BEQ CODE_E5B4					;
 RTS						;untriggered, meaning this type of flame only runs in 25M (this could've worked for 50M maybe?)
 
 CODE_E5B4:
-INC $00						;move horizonrally to the right
-LDA $00						;
+INC TEMP_EntityXPosition			;move horizonrally to the right
+LDA TEMP_EntityXPosition			;
 CMP #$2C					;when at certain position, start moving down
 BEQ CODE_E5BE					;
 BCC CODE_E5E5					;if less than, skip
 
 ;more than that pos also counts
 CODE_E5BE:
-INC $01						;move down
-LDA $01						;
+INC TEMP_EntityYPosition			;move down
+LDA TEMP_EntityYPosition			;
 CMP #$C5					;
 BNE CODE_E5E5					;
 
@@ -7271,16 +7265,16 @@ LDA #$00					;
 LDX FlameEnemy_CurrentIndex			;
 STA FlameEnemy_State,X				;become normal
 
-DEC $00						;move up
-LDA $00						;
+DEC TEMP_EntityXPosition			;move up
+LDA TEMP_EntityXPosition			;
 CMP #$68					;
 BCS CODE_E5D9					;
 
-INC $01						;
+INC TEMP_EntityYPosition			;
 JMP CODE_E5DB					;
 
 CODE_E5D9:
-DEC $01						;unused, because flame becomes normal and doesn't execure anymore of this, meaning the check for this to run can't be triggered
+DEC TEMP_EntityYPosition			;unused, because flame becomes normal and doesn't execute anymore of this, meaning the check for this to run can't be triggered
 
 CODE_E5DB:
 CMP #$60					;something else about X-pos (which is pointless)
@@ -7362,7 +7356,7 @@ BEQ CODE_E640					;check ladder X-positions
 JMP CODE_E66D					;
 
 CODE_E640:
-LDA $00						;check enemy's x-pos
+LDA TEMP_EntityXPosition			;check enemy's x-pos
 CMP #$5C					;if it encounters a ladder at these coordinates, it'll start climbing up
 BEQ CODE_E64D					;
 CMP #$C4					;
@@ -7394,7 +7388,7 @@ STA FlameEnemy_LadderBoundary,X			;
 JMP CODE_E697					;
 
 CODE_E66D:
-LDA $00						;different ladder x-pos on the next platform
+LDA TEMP_EntityXPosition			;different ladder x-pos on the next platform
 CMP #$2C					;
 BEQ CODE_E67A					;
 CMP #$6C					;
@@ -7436,10 +7430,10 @@ RTS						;
 
 ;flame enemy checks for platform edges and elevations in 25M level
 CODE_E6A5:
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 CLC						;
 ADC #$0B					;
-JSR CODE_E016					;get what platform the enemy's on
+JSR GetEntitysPlatform_E016			;get what platform the enemy's on
 
 LDY FlameEnemy_MoveDirection			;what direction is it movin'?
 LDX FlameEnemy_CurrentIndex			;
@@ -7459,7 +7453,7 @@ CODE_E6C3:
 JMP CODE_E73C					;
 
 CODE_E6C6:
-LDA $00						;x-position
+LDA TEMP_EntityXPosition			;x-position
 JSR CODE_E5E8					;check if standing on an elevation point on the platform
 BNE CODE_E6E3					;not, moving on
 
@@ -7476,8 +7470,8 @@ LDA DATA_C79C,Y					;other way around
 
 CODE_E6DE:
 CLC						;
-ADC $01						;
-STA $01						;
+ADC TEMP_EntityYPosition			;
+STA TEMP_EntityYPosition			;
 
 CODE_E6E3:
 LDX FlameEnemy_CurrentIndex			;
@@ -7485,13 +7479,13 @@ LDA FlameEnemy_CurrentPlatformIndex,X		;
 CMP #$01					;check if on the very bottom platform
 BEQ CODE_E6F3					;
 
-LDA $00						;check horizontal position
+LDA TEMP_EntityXPosition			;check horizontal position
 CMP DATA_C3E6,Y					;
 BEQ CODE_E6FB					;stop right there if encountered an edge of the platform (2nd platform)
 RTS						;
 
 CODE_E6F3:
-LDA $00						;chk x-pos
+LDA TEMP_EntityXPosition			;chk x-pos
 CMP DATA_C3E8,Y					;STOP RIGHT THERE CRIMINAL SCUM
 BEQ CODE_E6FB					;don't move further if encountered a ledge, again.
 RTS						;
@@ -7509,7 +7503,7 @@ LDA FlameEnemy_CurrentPlatformIndex,X		;
 CMP #$02					;on this platform...
 BNE CODE_E719					;
 
-LDA $00						;
+LDA TEMP_EntityXPosition			;
 CMP DATA_C3EA,Y					;see if encountered an edge
 BEQ CODE_E735					;
 CMP DATA_C3EC,Y					;a different platform to the right
@@ -7523,7 +7517,7 @@ CMP #$04					;see if on this platform
 BEQ CODE_E72E					;
 
 CODE_E721:
-LDA $00						;
+LDA TEMP_EntityXPosition			;
 CMP DATA_C3EE,Y					;right platform's edges
 BEQ CODE_E735					;
 CMP DATA_C3F0,Y					;left platform's edges
@@ -7533,7 +7527,7 @@ RETURN_E72D:
 RTS						;
 
 CODE_E72E:
-LDA $00						;check if pretty much at the right edge of the level (no right check because the flame will automaitcally climb a ladder)
+LDA TEMP_EntityXPosition			;check if pretty much at the right edge of the level (no right check because the flame will automaitcally climb a ladder)
 CMP #$DB					;
 BEQ CODE_E735					;
 RTS						;
@@ -7573,7 +7567,7 @@ DEY						;
 JMP LOOP_E747					;next platform
 
 CODE_E75C:
-CMP $00						;
+CMP TEMP_EntityXPosition			;
 BEQ CODE_E769					;stop or not?
 
 LDA FlameEnemy_MoveDirection			;
@@ -7680,7 +7674,7 @@ CPY $0A						;
 BEQ CODE_E7F2					;
 
 LDA ($07),Y					;check if the flamer is at the ladder's x-pos
-CMP $00						;
+CMP TEMP_EntityXPosition			;
 BEQ CODE_E7F9					;climb it
 INY						;
 INY						;
@@ -8002,7 +7996,7 @@ TXA						;
 CLC						;
 ADC #$30					;and + 30
 TAX						;
-STX $04						;
+STX TEMP_EntityOAMSlot				;
 
 JSR EntityPosToScratch_EAEC			;get x and y-pos
 CMP #$FF					;if not even onscreen, try to respawn
@@ -8013,15 +8007,15 @@ LDX Springboard_CurrentIndex			;
 LDA Springboard_SpawnedXPos,X			;check when it's supposed to drop down
 CLC						;
 ADC #$B0					;
-CMP $00						;
+CMP TEMP_EntityXPosition			;
 BCC CODE_E9B4					;not far enough
 
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 CMP #$26					;
 BCS CODE_E9BE					;also y-pos
 
 LDA #Spring_GFXFrame_UnPressed			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 JMP CODE_E9DA					;set it's gfx frame to be unpressed
 
 CODE_E9B4:
@@ -8033,9 +8027,9 @@ JMP CODE_E9EA					;
 ;bounce off the platform
 CODE_E9BE:
 LDA #Spring_GFXFrame_Pressed			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
-LDA $01						;check Y-pos
+LDA TEMP_EntityYPosition			;check Y-pos
 CMP #$2E					;if higher than the platform
 BCC CODE_E9DA					;continue moving
 
@@ -8043,7 +8037,7 @@ LDA #Sound_Effect_SpringBounce			;da bounce
 STA Sound_Effect				;
 
 LDA #$2E					;place the spring on the platform
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA Springboard_CurrentIndex			;
 ASL A						;
@@ -8053,10 +8047,10 @@ LDA #$00					;
 STA Springboard_GravityInitFlag,X		;can bounce again
 
 CODE_E9DA:
-LDA $00						;move x-pos
+LDA TEMP_EntityXPosition			;move x-pos
 CLC						;by two pixels
 ADC #$02					;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA Springboard_CurrentIndex			;
 CLC						;
@@ -8082,10 +8076,10 @@ RTS						;
 
 ;move springboard straight down (when dropping)
 CODE_EA01:
-LDA $01						;
-INC $01						;drop quickly
-INC $01						;
-INC $01						;
+LDA TEMP_EntityYPosition			;
+INC TEMP_EntityYPosition			;drop quickly
+INC TEMP_EntityYPosition			;
+INC TEMP_EntityYPosition			;
 CMP #$26					;
 BNE CODE_EA11					;
 
@@ -8111,12 +8105,12 @@ RTS						;
 
 CODE_EA2A:
 LDA #Spring_GFXFrame_Pressed			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 RTS						;
 
 CODE_EA2F:    
 LDA #Spring_GFXFrame_UnPressed			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 RTS						;
 
 ;spawn a springboard
@@ -8132,13 +8126,13 @@ CLC						;
 ADC #$10					;+fixed distance
 LDX Springboard_CurrentIndex			;get springboard's index
 STA Springboard_SpawnedXPos,X			;remember spawn x-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA #Spring_Spawn_YPos				;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA #Spring_GFXFrame_Pressed			;
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 JSR CODE_EADB					;yes, spawn
 
@@ -8167,10 +8161,10 @@ RTS						;
 
 CODE_EA72:
 LDA #PaulineBody_XPos				;pauline's body x-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA #PaulineBody_YPos				;and Y-pos
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 LDA PaulineBody_OAM_Tile			;check pauline's frame
 CMP #PaulineBody_GFXFrame_Frame2		;2?
@@ -8262,7 +8256,7 @@ RTS						;
 
 SpriteDrawingPREP_JumpmanOAM_EACD:
 LDA #<Jumpman_OAM_Y				;get Jumpmans OAM sprite tile low byte for sprite update (indirect adressing)
-STA $04						;
+STA TEMP_EntityOAMSlot				;
 
 SpriteDrawingPREP_Draw16x16_EAD1:		;pointless label, can just use JSR SpriteDrawingPREP_Draw16x16_2_EAD6.
 JMP SpriteDrawingPREP_Draw16x16_2_EAD6		;
@@ -8271,12 +8265,12 @@ JMP SpriteDrawingPREP_Draw16x16_2_EAD6		;
 ;A - first sprite tile to draw
 
 SpriteDrawingPREP_StoreTile_EAD4:
-STA $02						;store tile
+STA TEMP_EntityOAMTile				;store tile
 
 ;this label isn't even used, only for a pointless jump above
 SpriteDrawingPREP_Draw16x16_2_EAD6:
 LDA #$22					;2 rows and 2 columns
-STA $03						;
+STA TEMP_EntityGFXSize				;
 RTS						;
 
 ;i think this is used for entity spawning (barrels, springs and such)
@@ -8291,22 +8285,21 @@ JMP CODE_F082					;draw
 ;$00 - Entity X-position
 ;$01 - Entity Y-position
 
-;CODE_EAE1:
 JumpmanPosToScratch_EAE1:
 LDA Jumpman_OAM_X				;sprite tile X-position
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA Jumpman_OAM_Y				;sprite tile Y-position
-STA $01						;
+STA TEMP_EntityYPosition			;
 RTS						;
 
 ;same as above but for other entities
 EntityPosToScratch_EAEC:
 LDA OAM_X,X					;entity's x-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA OAM_Y,X					;y-pos
-STA $01						;
+STA TEMP_EntityYPosition			;
 RTS						;
 
 ;get an index for various objects, to make it more difficult for the player
@@ -8421,7 +8414,7 @@ STA Timer_KongAnimation				;
 JSR CODE_EB97					;holding barrel gfx
 JMP CODE_EB2B					;...then it jumps back to timer checks which won't do anything.
 
-;various inputs for CODE_C815, which is kong related (basically load various graphical frames for donkey)
+;various inputs for GetVRAMUpdateToBuffer_C815, which is kong related (basically load various graphical frames for donkey)
 CODE_EB85:
 LDA #Sound_Effect_Hit				;sound effect when DK hits his chest.
 STA Sound_Effect				;
@@ -8454,7 +8447,7 @@ CODE_EBA6:
 LDA #$02					;show DK's "default" frame
 
 CODE_EBA8:
-JSR CODE_C815					;load correct pointer for DK's image and then buffer it
+JSR GetVRAMUpdateToBuffer_C815			;load correct pointer for DK's image and then buffer it
 
 DEC Timer_KongAnimation				;immediatly move on so it doesn't redraw the same frame for several frames
 
@@ -8628,10 +8621,10 @@ CMP #$18					;
 BCS CODE_EC97					;if too high (like when jumpman is on a way higher platform), don't award score
 
 ;player jumped over a barrel, spawn score 100 (or maybe a springboard, idk)
-LDA $00						;score's pos to player's
+LDA TEMP_EntityXPosition			;score's pos to player's
 STA $05						;
 
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 STA $06						;
 
 LDX #$00					;score index IIRC (so that's 100 score)
@@ -8653,9 +8646,9 @@ JMP CODE_EC48					;
 
 ;jumpman contacted barrel (or other enemy) - DIE
 CODE_ECA7:
-JSR CODE_EF51					;no held hammer zone
+JSR RemoveHeldHammer_EF51			;no held hammer zone
 
-LDA #Jumpman_State_Dead				;Jumpman is dead? Always have been.
+LDA #Jumpman_State_Dead				;Jumpman is dead? Always has been.
 STA Jumpman_State				;
 RTS						;
 
@@ -8697,12 +8690,12 @@ BEQ CODE_ECE8					;adjust hitbox if the hammer is up
 LDA #$04					;adjust hammer hitbox position (center relative to the player)
 CLC						;
 ADC Jumpman_OAM_X				;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA Jumpman_OAM_Y				;above the player
 SEC						;
 SBC #$10					;
-STA $01						;
+STA TEMP_EntityYPosition			;
 JMP CODE_ED07					;
 
 CODE_ECE8:
@@ -8721,12 +8714,12 @@ CLC						;
 ADC #$10					;
 
 CODE_ECFD:
-STA $00						;scratch ram
+STA TEMP_EntityXPosition			;scratch ram
 
 LDA Jumpman_OAM_Y				;jumpman's y-pos
 CLC						;
 ADC #$06					;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 CODE_ED07:
 LDA #$3C					;get hammer's hitbox
@@ -8786,10 +8779,10 @@ CODE_ED57:
 LDA #Sound_Effect2_EnemyDestruct		;sound ofc
 STA Sound_Effect2				;
 
-LDA $00						;not sure yet (X and Y-pos related)
-STA $05						;
+LDA TEMP_EntityXPosition			;
+STA $05						;I think this places score at the destroyed enemy's position
 
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 STA $06						;
 
 LDA PhaseNo					;see if we've destroyed a barrel or a flanemy
@@ -8803,7 +8796,7 @@ STA Barrel_CurrentPlatformIndex,X		;not on any platform (because destroyed)
 LDA #$01					;yes destroying an enemy
 JMP CODE_ED87					;
 
-CODE_ED74:  
+CODE_ED74:
 LDA #$10					;set up a short timer
 STA Timer_FlameEnemySpawn			;
 
@@ -8846,7 +8839,7 @@ BEQ CODE_EDB5					;move on to hammer
 JMP LOOP_ED93					;
 
 CODE_EDAD:
-JSR CODE_EF51					;if player held a hammer, remove it
+JSR RemoveHeldHammer_EF51			;if player held a hammer, remove it
 
 LDA #Jumpman_State_Dead				;player is incapacitated
 STA Jumpman_State				;
@@ -8889,10 +8882,10 @@ LDA DATA_C42B+1,X				;^
 STA $03						;|
 
 LDA DATA_C423,X					;hitbox position x
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA DATA_C423+1,X				;hitbox position y
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 CODE_EDEB:
 JSR CODE_EFEF					;collision
@@ -8902,15 +8895,15 @@ LDA PhaseNo					;
 CMP #Phase_75M					;another 75M check
 BNE RETURN_EE0B					;not 75M = return (one hitbox)
 
-LDA $01						;check if we altered y-position for the hitbox to check (checking the other lift end)
+LDA TEMP_EntityYPosition			;check if we altered y-position for the hitbox to check (checking the other lift end)
 CMP #$C9					;
 BEQ RETURN_EE0B					;
 
 LDA #$70					;x-pos
-STA $00						;
+STA TEMP_EntityXPosition			;
 
 LDA #$C9					;
-STA $01						;y-pos
+STA TEMP_EntityYPosition			;y-pos
 JMP CODE_EDEB					;re-run this
 
 CODE_EE07:
@@ -8944,7 +8937,7 @@ CODE_EE26:
 JSR GetFlameEnemyOAM_EFDD			;destroying flame enemy, get it's OAM slots
 
 CODE_EE29:
-STX $04						;save OAM slot
+STX TEMP_EntityOAMSlot				;save OAM slot
 
 JSR EntityPosToScratch_EAEC			;
 
@@ -8962,11 +8955,11 @@ BEQ CODE_EE51					;if animation has ended, remove all traces
 LDX Hammer_DestroyingEnemy			;
 DEX						;
 LDA EnemyDestructionAnimationFrames_C1EC,X	;show animation
-STA $02						;
+STA TEMP_EntityOAMTile				;
 
 JSR CODE_EADB					;draw tiles
 
-LDX $04						;saved OAM slot
+LDX TEMP_EntityOAMSlot				;saved OAM slot
 
 LDA #EnemyDestruction_Prop			;
 JSR CODE_EE6C					;set props
@@ -9071,7 +9064,7 @@ LDA Jumpman_State				;if Jumpman is jumping over that space, return
 CMP #Jumpman_State_Jumping			;
 BEQ RETURN_EEE6					;
 
-JSR CODE_EF51					;remove hammer if being held
+JSR RemoveHeldHammer_EF51			;remove hammer if being held
 
 LDA #Jumpman_State_Falling			;
 STA Jumpman_State				;Jumpman's falling
@@ -9149,11 +9142,11 @@ LDA UNUSED_C5E9,X				;
 STA $00						;
 
 LDA #$48					;
-JMP CODE_C815					;write to buffer
+JMP GetVRAMUpdateToBuffer_C815			;write to buffer
 
 ;this code is used to remove the hammer Jumpman was holding
-;RemoveHeldHammer_EF51:
-CODE_EF51:
+;not exactly like HammerWornOut routine
+RemoveHeldHammer_EF51:
 LDA Jumpman_State				;if jumpman didn't have hammer, return 
 CMP #Jumpman_State_Hammer			;
 BNE RETURN_EF71					;
@@ -9170,6 +9163,7 @@ ASL A						;get proper OAM slot for hammers
 ASL A						;
 ASL A						;
 TAX						;
+
 LDA #$FF					;
 STA Hammers_OAM_Y,X				;remove hammer
 STA Hammers_OAM_Y+4,X				;part 2
@@ -9229,18 +9223,18 @@ SEC						;
 SBC Entity_UpwardSubSpeed,X			;
 STA Entity_SubYPos,X				;sub-pos
 
-LDA $01						;actual position
+LDA TEMP_EntityYPosition			;actual position
 SBC Entity_UpwardSpeed,X			;
-STA $01						;
+STA TEMP_EntityYPosition			;
 
 CLC						;now apply downward y-speed
 LDA Entity_SubYPos,X				;
 ADC Entity_DownwardSubSpeed,X			;
 STA Entity_SubYPos,X				;
 
-LDA $01						;
+LDA TEMP_EntityYPosition			;
 ADC Entity_DownwardSpeed,X			;
-STA $01						;final actual y-pos result
+STA TEMP_EntityYPosition			;final actual y-pos result
 
 INC Entity_GravityInitFlag,X			;no more init... can potentially overflow if in air for too long, but I guess this can't happen anywhere in the base game.
 
@@ -9392,7 +9386,7 @@ INY						;
 CODE_F063:
 LDA ($02),Y					;width
 CLC						;
-ADC $00						;00 contains x-pos
+ADC TEMP_EntityXPosition			;contains, what else, x-pos
 RTS						;
 
 ;get y-pos boundaries
@@ -9400,13 +9394,13 @@ CODE_F069:
 INY						;
 LDA ($02),Y					;height
 CLC						;
-ADC $01						;01 contains y-pos
+ADC TEMP_EntityYPosition			;y-position
 RTS						;
 
 ;routines all leading to sprite tile drawing one, with various inputs
 ;this specific routine (CODE_F070) should've been used more...
 CODE_F070:
-STA $02						;
+STA TEMP_EntityOAMTile				;
 JSR JumpmanPosToScratch_EAE1			;get jumpman's positions into scrath RAM ($00 and $01)
 
 CODE_F075:
@@ -9419,39 +9413,40 @@ LSR A						;draw flipped or not depending on player's direction
 JMP SpriteDrawingEngine_F096			;start drawing
 
 CODE_F080:
-STA $04						;OAM low byte
+STA TEMP_EntityOAMSlot				;OAM low byte
 
 CODE_F082:
 LDA #$00					;
-BEQ SpriteDrawingEngine_F096			;wow, so branches are a thing now?
+BEQ SpriteDrawingEngine_F096			;draw normal
 
-;SpriteDrawingEnginePrep_SetOAMThenDrawFlipped_F086:
+;SpriteDrawingEnginePrep_SetOAMAndDrawXFlipped_F086:
 CODE_F086:
-STA $04						;OAM low byte
+STA TEMP_EntityOAMSlot				;OAM low byte
 
-;SpriteDrawingEnginePrep_DrawFlipped_F088:
+;SpriteDrawingEnginePrep_DrawXFlipped_F088:
 CODE_F088:
 LDA #$01					;draw flipped
 BNE SpriteDrawingEngine_F096			;
 
-;SpriteDrawingEnginePrep_SetOAMThenRemoveSprites_F08C:
+;SpriteDrawingEnginePrep_SetOAMAndInitTiles_F08C:
 CODE_F08C:
-STA $04						;
+STA TEMP_EntityOAMSlot				;
 
-;SpriteDrawingEnginePrep_RemoveSprites_F08E:
+;SpriteDrawingEnginePrep_InitTiles_F08E:
 CODE_F08E:
-LDA #$04					;
+LDA #$04					;set them up behind the scenes
 BNE SpriteDrawingEngine_F096			;
 
+;SpriteDrawingEnginePrep_RemoveTiles_F092:
 CODE_F092:
-STA $03						;rows and columns n stuff
+STA TEMP_EntityGFXSize				;rows and columns n stuff
 
 CODE_F094:
-LDA #$0F					;
+LDA #$0F					;get them out of my sight!
 
 ;This routine is used for sprite tile updates
 ;Input:
-;A - drawing mode stored into $0F, values: 00 - draw/redraw, 01 - draw/redraw horizontally flipped, 04 - init sprite tiles' properties (keeps them hidden however), any other value - erase tiles
+;A - drawing mode, values: 00 - draw/redraw, 01 - draw/redraw horizontally flipped, 04 - init sprite tiles' properties (keeps them hidden however), any other value - erase tiles
 ;$00 - X-position of the first column (to the left)
 ;$01 - Y-position of the first row (the highest)
 ;$02 - first tile to start drawing from (e.g. 04 means draw tiles 04,05,06 and 07 if drawing 4 tiles). for sprite tile initialization (draw mode = 4) this is used to fill properties (OAM_Prop)
@@ -9459,19 +9454,27 @@ LDA #$0F					;
 ;$04 - low byte of OAM address for indirect addressing.
 
 ;used addresses (aside from above ofc)
-;$05 - high byte of OAM address for indirect addressing (always #$02)
+;$05 - high byte of OAM address for indirect addressing (always #$02, an extension of )
 ;$06 - how many tiles tall the sprite is (number of rows)
-;$07 - how wide the sprite is (amount of sprites in the same row)
-;$08 - total sprite tiles to draw
-;$09 - y-position of each tile in a column (draw mode = 0). also contains copy of $01 for erasing mode (draw mode = 2-FF), but it's not used for anything.
+;$07 - how wide the sprite is (amount of sprite tiles on the same row)
+;$08 - total sprite tiles to draw/update
+;$09 - y-position of each tile in a column (draw mode = 0). also contains copy of TEMP_EntityYPosition for erasing mode (draw mode = any value but 0, 1 and 4), but it's not used for anything.
 ;$0A - offset for indirect addressing to access OAM's tile and property (draw mode = 1)
 ;$0B - tile offset for reverse tile updating (draw mode = 1)
-;$0F - drawing mode
+;$0F - drawing mode (input A)
+
+TEMP_SpriteHeight = $06
+TEMP_SpriteWidth = $07
+TEMP_TilesToUpdate = $08
+TEMP_TileYPos = $09
+TEMP_XFlipOAMOffset = $0A
+TEMP_XFlipTileOffset = $0B
+TEMP_DrawMode = $0F
 
 SpriteDrawingEngine_F096:
 ;push a bunch of things, registers, some temp RAM and stuff
 PHA						;
-STA $0F						;input A into this
+STA TEMP_DrawMode				;input A into this
 
 TXA						;
 PHA						;save x
@@ -9498,49 +9501,50 @@ LDA $09						;
 PHA						;
 
 LDA #>OAM_Y					;high byte for indirect addressing is always 02 (to get access to 0200 page, OAM)         
-STA $05						;
+STA TEMP_EntityOAMSlot+1			;
 
-LDA $0F						;check for tile init mode
+LDA TEMP_DrawMode				;check for tile init mode
 CMP #$04					;
 BEQ CODE_F0EF					;
 
 LDA #$0F					;
-AND $03						;
-STA $07						;separate rows
+AND TEMP_EntityGFXSize				;
+STA TEMP_SpriteWidth				;amount of tiles on a single row
 
-LDA $03						;
+LDA TEMP_EntityGFXSize				;
 LSR A						;
 LSR A						;
 LSR A						;
 LSR A						;
-STA $06						;get columns
+STA TEMP_SpriteHeight				;amount of rows stacked vertically (one word that scientifically describes this is "height")
 TAX						;
 LDA #$00					;calculate from zero
 CLC						;
 
 LOOP_F0CB:
-ADC $07						;Rows * Tiles (so if 2 columns and 2 tiles each thats 4 tiles)
+ADC TEMP_SpriteWidth 				;Rows * Tiles (so if 2 columns and 2 tiles each thats 4 tiles)
 DEX						;
 BNE LOOP_F0CB					;loop
-STA $08						;get total OAM slots to draw
+STA TEMP_TilesToUpdate				;get total OAM slots to draw/update
 
-LDA $0F						;
+LDA TEMP_DrawMode				;
 BNE CODE_F0DC					;
-JSR CODE_F11E					;update tiles and properties (no flips)
+
+JSR SpriteDrawingEngine_UpdateTilesNoFlip_F11E	;update tiles and properties (no flips)
 JMP CODE_F0E9					;
 
 CODE_F0DC:
 CMP #$01					;
 BEQ CODE_F0E6					;
 
-JSR CODE_F195					;erase tiles
+JSR SpriteDrawingEngine_RemoveTiles_F195	;erase tiles
 JMP CODE_F0F2					;end
 
 CODE_F0E6:
-JSR CODE_F161					;draw but its horizontally flipped
+JSR SpriteDrawingEngine_UpdateTilesXFlip_F161	;draw but its horizontally flipped
 
 CODE_F0E9:
-JSR CODE_F139					;positions
+JSR SpriteDrawingEngine_UpdateTilePositions_F139;positions
 JMP CODE_F0F2					;end
 
 CODE_F0EF:
@@ -9576,16 +9580,16 @@ RTS						;
 
 ;init sprite tiles: keep them hidden but store props
 CODE_F10A:
-LDX $03						;in this case $03 isn't columns and rows but a number of tiles to init (instead of $08 used in other routines)
-LDY #$00					;
+LDX TEMP_EntityGFXSize				;in this case $03 isn't columns and rows but a number of tiles to init (instead of TEMP_TilesToUpdate used in other routines)
+LDY #$00					;(it's basically still the size of the sprite we'll draw)
 
 LOOP_F10E:
 LDA #$FF					;
-STA ($04),y					;Y-pos (remove sprite tile)
+STA (TEMP_EntityOAMSlot),y			;Y-pos (remove sprite tile)
 INY						;
 INY						;
-LDA $02						;properties
-STA ($04),Y					;
+LDA TEMP_EntityOAMProp				;properties
+STA (TEMP_EntityOAMSlot),Y			;
 INY						;
 INY						;
 DEX						;init all of em
@@ -9593,20 +9597,20 @@ BNE LOOP_F10E					;
 RTS						;
 
 ;draw or redraw sprite tiles (no x-flip)
-CODE_F11E:
-LDA $02						;load first tile
-LDX $08						;how many tiles?
+SpriteDrawingEngine_UpdateTilesNoFlip_F11E:
+LDA TEMP_EntityOAMTile				;load first tile
+LDX TEMP_TilesToUpdate				;how many tiles?
 LDY #$01					;for sprite tile
 
 LOOP_F124:
-STA ($04),Y					;
+STA (TEMP_EntityOAMSlot),Y			;
 CLC						;
 ADC #$01					;next sprite tile number
 INY						;load property next
 PHA						;and save A
-LDA ($04),Y					;remove flip bits
-AND #$3F					;
-STA ($04),Y					;
+LDA (TEMP_EntityOAMSlot),Y			;remove flip bits
+AND #$FF^(OAMProp_YFlip|OAMProp_XFlip)		;
+STA (TEMP_EntityOAMSlot),Y			;
 PLA						;restore sprite tile num
 INY						;next OAM slot
 INY						;
@@ -9616,98 +9620,99 @@ BNE LOOP_F124					;
 RTS						;
 
 ;store sprite tile positions
-CODE_F139:
+SpriteDrawingEngine_UpdateTilePositions_F139:
 LDY #$00					;
 
 LOOP_F13B:
-LDX $06						;
-LDA $01						;copy y-position
-STA $09						;
+LDX TEMP_SpriteHeight				;
+LDA TEMP_EntityYPosition			;copy y-position
+STA TEMP_TileYPos				;
 
 LOOP_F141:
-LDA $09						;
-STA ($04),Y					;
+LDA TEMP_TileYPos				;
+STA (TEMP_EntityOAMSlot),Y			;
 CLC						;next sprite tile's y-position in the same column
 ADC #$08					;
-STA $09						;
+STA TEMP_TileYPos				;8 pixels below
 INY						;
 INY						;
 INY						;
-LDA $00						;
-STA ($04),Y					;same x-pos for all tiles in a column
+LDA TEMP_EntityXPosition			;
+STA (TEMP_EntityOAMSlot),Y			;same x-pos for all tiles in a column
 INY						;
 DEX						;
-BNE LOOP_F141					;loop until done with a column
+BNE LOOP_F141					;loop until done with every column
 
-LDA $00						;next tile in a row
+LDA TEMP_EntityXPosition			;next column is 8 pixels to the right
 CLC						;
 ADC #$08					;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
-DEC $07						;
-BNE LOOP_F13B					;draw another column
+DEC TEMP_SpriteWidth				;
+BNE LOOP_F13B					;next column
 RTS						;
 
 ;draw horizontally flipped
-CODE_F161:
+SpriteDrawingEngine_UpdateTilesXFlip_F161:
 LDY #$01					;for indirect access
-STY $0A						;
+STY TEMP_XFlipOAMOffset				;
 
-LDA $08						;total tiles
+LDA TEMP_TilesToUpdate				;total tiles
 SEC						;
-SBC $06						;minus number of rows
+SBC TEMP_SpriteHeight				;minus number of columns
 
 LOOP_F16A:
 TAY						;
-STA $0B						;base offset for tiles (since we're drawing them in reverse order)
+STA TEMP_XFlipTileOffset			;base offset for tiles (since we're drawing them in reverse order)
 
-LDX $06						;
+LDX TEMP_SpriteHeight				;
 
 LOOP_F16F:
 TYA						;
 PHA						;
 CLC						;
 TYA						;
-ADC $02						;tile offset + base tile value
-LDY $0A						;
-STA ($04),Y					;tile
+ADC TEMP_EntityOAMTile				;tile offset + base tile value
+LDY TEMP_XFlipOAMOffset				;
+STA (TEMP_EntityOAMSlot),Y			;tile
 
 INY						;
-LDA ($04),Y					;
-AND #$3F					;
+LDA (TEMP_EntityOAMSlot),Y			;
+AND #$FF^(OAMProp_YFlip|OAMProp_XFlip)		;
 EOR #OAMProp_XFlip				;flip x!
-STA ($04),Y					;
+STA (TEMP_EntityOAMSlot),Y			;
 
 INY						;next OAM slot
 INY						;
 INY 						;
-STY $0A						;
+STY TEMP_XFlipOAMOffset				;
+
 PLA						;
 TAY						;
 INY						;
 DEX						;update until the column is done
 BNE LOOP_F16F					;
 
-LDA $0B						;that tile offset
+LDA TEMP_XFlipTileOffset			;that tile offset
 SEC						;
-SBC $06						;minus rows
+SBC TEMP_SpriteHeight				;minus columns
 BPL LOOP_F16A					;continue witht the next column if we aren't done
 RTS						;
 
 ;remove sprite tiles
-CODE_F195:
+SpriteDrawingEngine_RemoveTiles_F195:
 LDY #$00					;
 
 LOOP_F197:
-LDX $06						;how many rows
+LDX TEMP_SpriteHeight				;how tall is the sprite?
 
-LDA $01						;y-pos? seems pointless
-STA $09						;
+LDA TEMP_EntityYPosition			;y-pos? seems pointless
+STA TEMP_TileYPos				;
 
 LDA #$FF					;remove sprite tiles
 
 LOOP_F19F:
-STA ($04),Y					;
+STA (TEMP_EntityOAMSlot),Y			;
 INY						;
 INY						;
 INY						;
@@ -9715,12 +9720,12 @@ INY						;
 DEX						;
 BNE LOOP_F19F					;
 
-LDA $00						;this is also pointless? smells like a copy-paste to me yet again
+LDA TEMP_EntityXPosition			;this is also pointless? smells like a copy-paste to me yet again
 CLC						;
 ADC #$08					;
-STA $00						;
+STA TEMP_EntityXPosition			;
 
-DEC $07						;remove all columns
+DEC TEMP_SpriteWidth 				;next column of sprites (amount of sprite tiles = TEMP_SpriteHeight * TEMP_SpriteWidth)
 BNE LOOP_F197					;
 RTS						;
 
@@ -9864,9 +9869,9 @@ JSR NextVRAMUpdateIndex_F32D			;
 
 INY						;
 LDA ScoreVRAMUpdData_C000,Y			;third byte - how many digits (tiles) to write (update)
-AND #$87					;unsure
+AND #VRAMWriteCommand_DrawVert|$07		;vertical digit alignment, anyone? obviously pointless
 STA BufferAddr,X				;
-AND #$07					;still unsure
+AND #$07					;max 8 digits? though the counters are max 6
 STA $02						;how many digits
 TXA						;
 SEC						;
@@ -9875,8 +9880,9 @@ JSR NextVRAMUpdateIndex_CheckOverflow_F32F	;
 TAX						;
 STX BufferOffset				;
 
-LDA #$00					;
-STA BufferAddr,X				;ones/tens is always zero - there's no score bonus that adds from 1 to 99
+LDA #VRAMWriteCommand_Stop			;
+STA BufferAddr,X				;the very last byte must be a terminator, as you can imagine
+
 INY						;
 LDA ScoreVRAMUpdData_C000,Y			;load end command for score update after all digit bytes
 STA $03						;
@@ -9946,31 +9952,30 @@ BNE LOOP_F28E					;
 
 CODE_F2C4:
 LDA $03						;
-AND #$10					;
+AND #$10					;check for some bit
 BEQ RETURN_F2D6					;
 
 ;----------------------------------------------
 ;!UNUSED
-;some code for unknown (unused) trigger bit
+;replaces the very last digit (the highest one) with a fixed tile. Purpose unknown.
 INX						;
 LDY $01						;get counter
 CLC						;
 LDA $0020,Y					;
-ADC #$37					;print platform part tiles? what this was for?
+ADC #$37					;print a platform part tile? huh?
 STA BufferAddr,X				;
 ;----------------------------------------------
 
 RETURN_F2D6:
 RTS						;
 
-;This routine tosses stuff to upload to VRAM into buffer, using "row" format.
+;This routine tosses VRAM updates into buffer for later, using "row" format.
 ;first byte is number of rows and bytes per row (low nibble and high nibble respectively)
 ;Input:
 ;$00-$01 - VRAM address from which the modifications are made
 ;$02-$03 - Table pointer from which the data for buffer is gathered
 
-;VRAMWritetoBuffer_F2D7:
-CODE_F2D7:
+VRAMUpdateToBuffer_F2D7:
 LDY #$00					;
 LDA ($02),Y					;get first byte's low nibble - rows
 AND #$0F					;
@@ -9999,7 +10004,7 @@ STA $06						;
 ORA #VRAMWriteCommand_DrawVert			;vertical drawing
 STA BufferAddr,X				;
 
-LOOP_F303: 
+LOOP_F303:
 JSR NextVRAMUpdateIndex_F32D			;
 INY						;
 LDA ($02),Y					;
@@ -10008,10 +10013,10 @@ DEC $06						;if transferred all bytes for current line, proceed...
 BNE LOOP_F303					;
 
 JSR NextVRAMUpdateIndex_F32D			;
-CLC						;next vertical row in VRAM.
-LDA #$01					;
+CLC						;next strip in VRAM.
+LDA #$01					;very next tile (or wrap-around)
 ADC $00						;
-STA $00
+STA $00						;
 
 LDA #$00					;
 ADC $01						;take high byte into account also
@@ -10026,12 +10031,10 @@ STA BufferAddr,X				;
 RTS						;
 
 NextVRAMUpdateIndex_F32D:
-;CODE_F32D:
 INX						;next index...
 TXA						;into A
 
 NextVRAMUpdateIndex_CheckOverflow_F32F:
-;CODE_F32F:
 CMP #$3F					;check if we're updating too much (not to overflow into bit 6, which is a repeat bit)
 BCC RETURN_F33D					;if not, return
 
@@ -10045,10 +10048,10 @@ PLA						;/terminate return from routine that called this one
 RETURN_F33D:
 RTS						;
 
-;score calculation routine.
+;score calculation routine (prep).
 ;input:
 ;$00 - how much score to add/substract.
-;$01 - score or counter offset (bits 0-2), valid values are listed below. bit 3 - do calculation with ones and tens, otherwise hundreds and thousands
+;$01 - score or counter offset (bits 0-2), valid values are listed below. bit 3 - do calculation with hundreds and thousands, otherwise ones and tens 
 
 ;score substraction (used for BONUS counter)
 ;SubstractFromScoreCounter_F33E:
@@ -10096,7 +10099,7 @@ TAX						;
 LDA $04						;0 - addition, non-zero - substraction
 BEQ CODE_F38E					;
 
-LDA $24,X					;if this flag is set, it'll instead do addition?
+LDA Score_InvertOperandFlag+4,X			;if this flag is set, it'll instead do addition?
 BEQ CODE_F392					;
 
 ;doing addition
@@ -10106,26 +10109,26 @@ LDA ScoreDisplay_Counter+2,X			;
 STA $03						;
 
 LDA $07						;
-JSR CODE_F3E3					;calculate ones and tens
+JSR CounterAddition_F3E3			;calculate ones and tens
 STA ScoreDisplay_Counter+2,X			;
 
 LDA ScoreDisplay_Counter+1,X			;
 STA $03						;
 
 LDA $06						;
-JSR CODE_F3E3					;calculate hundreds and thousands
+JSR CounterAddition_F3E3			;calculate hundreds and thousands
 STA ScoreDisplay_Counter+1,X			;
 
 LDA ScoreDisplay_Counter,X			;
 STA $03						;
 
 LDA $05						;calculate tens and hundreds thousands
-JSR CODE_F3E3					;
+JSR CounterAddition_F3E3			;
 STA ScoreDisplay_Counter,X			;
 RTS						;
 
 CODE_F38E:
-LDA $24,X					;if this flag is set, it'll do substraction instead???
+LDA Score_InvertOperandFlag+4,X			;if this flag is set, it'll do substraction instead???
 BEQ CODE_F36B					;i guess this is like an overflow/underflow prevention measure, but it seems weirdly handled (does it even work?).
 
 ;doing substraction
@@ -10135,21 +10138,21 @@ LDA ScoreDisplay_Counter+2,X			;
 STA $03						;
 
 LDA $07						;sub ones tens
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 STA ScoreDisplay_Counter+2,X			;
 
 LDA ScoreDisplay_Counter+1,X			; 
 STA $03						;
 
 LDA $06						;sub hundreds thousands
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 STA ScoreDisplay_Counter+1,X			;
 
 LDA ScoreDisplay_Counter,X			;
 STA $03						;
 
 LDA $05						;sub ten/hundred thousands
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 STA ScoreDisplay_Counter,X			;
 
 ;check for underflow?
@@ -10165,26 +10168,26 @@ BEQ CODE_F3C6					;if all is zero, keep substraction, but still compensate
 CODE_F3C0:
 BCS RETURN_F3E2					;check if there's a value underflow. if not, don't fix
 
-LDA $24,X					;instead of substraction, do addition. but why?
+LDA Score_InvertOperandFlag+4,X			;instead of substraction, do addition. but why?
 EOR #$FF					;
 
 CODE_F3C6:
-STA $24,X					;
+STA Score_InvertOperandFlag+4,X			;
 
 SEC						;
 LDA #$00					;basically 1 because of SEC... yeah?
 STA $03						;
 
 LDA ScoreDisplay_Counter+2,X			;
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 STA ScoreDisplay_Counter+2,X			;
 
 LDA ScoreDisplay_Counter+1,X			;
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 STA ScoreDisplay_Counter+1,X			;
 
 LDA ScoreDisplay_Counter,X			;
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 STA ScoreDisplay_Counter,X			;
 
 RETURN_F3E2:
@@ -10197,9 +10200,8 @@ RTS						;
 ;Output:
 ;A - result
 ;Carry - if next calculation in this routine should have a +1 to the right digit
-;CounterAddition_F3E3:
-CODE_F3E3:
-JSR CODE_F426					;
+CounterAddition_F3E3:
+JSR ExtractDigits_F426				;
 ADC $01						;
 CMP #$0A					;if value less than A
 BCC CODE_F3EE					;don't round
@@ -10231,9 +10233,8 @@ RTS						;otherwise return
 ;Output:
 ;A - result
 ;Carry - if next calculation in this routine should have a -1 to the low digit
-;CounterSubstraction_F404:
-CODE_F404:
-JSR CODE_F426					;extract digits into separate adresses
+CounterSubstraction_F404:
+JSR ExtractDigits_F426				;extract digits into separate adresses
 SBC $01						;do some calculation for carry
 STA $01						;
 BCS CODE_F417					;
@@ -10265,8 +10266,7 @@ RTS						;
 ;Output:
 ;$01 - low digit (00-0F)
 ;$02 - high digit (00-F0)
-;ExtractDigits_F426:
-CODE_F426:
+ExtractDigits_F426:
 PHA						;
 AND #$0F					;
 STA $01						;save low digit
@@ -10314,39 +10314,39 @@ LDA ScoreDisplay_Top+2,Y			;
 STA $03						;
 
 LDA ScoreDisplay_Counter+2,X			;will compare score with top score by substracting TOP from current player score
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 
 LDA ScoreDisplay_Top+1,Y			;
 STA $03						;
 
 LDA ScoreDisplay_Counter+1,X			;
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 
 LDA ScoreDisplay_Top,Y				;
 STA $03						;
 
 LDA ScoreDisplay_Counter,X			;
-JSR CODE_F404					;
+JSR CounterSubstraction_F404			;
 BCS CODE_F4A4					;
 
-LDA $0020,Y					;TOP sub/add invert flag? similar to similar addresses for normal score calculation
-BNE CODE_F4A9
-  
+LDA Score_InvertOperandFlag,Y			;TOP sub/add invert flag? similar to similar addresses for normal score calculation
+BNE CODE_F4A9					;
+
 CODE_F479:
 LDA #$FF					;
 STA $04						;
 SEC						;carry set, means can overwrite TOP score
 
-CODE_F47E:   
+CODE_F47E:
 TYA						;something to do if there were multiple TOP scores? i'm not sure...
 BNE RETURN_F49F					;
 BCC CODE_F493					;
 
 ;store TOP score (if player's score is higher)
-LDA $24,X					;still not sure what this is supposed to be
-STA $20						;
+LDA Score_InvertOperandFlag+4,X			;still not sure what this is supposed to be
+STA Score_InvertOperandFlag			;
 
-LDA ScoreDisplay_Counter,X			;
+LDA ScoreDisplay_Counter,X			;new high score!
 STA ScoreDisplay_Top				;
 
 LDA ScoreDisplay_Counter+1,X			;
@@ -10358,8 +10358,9 @@ STA ScoreDisplay_Top+2				;
 CODE_F493:
 LDA $00						;check bit 3 (from input)
 AND #$08					;
-BEQ RETURN_F49F					;check for player 1 score?
-DEX						;
+BEQ RETURN_F49F					;
+
+DEX						;check next player's score
 DEX						;
 DEX						;
 DEX						;
@@ -10369,11 +10370,11 @@ RETURN_F49F:
 RTS						;
 
 CODE_F4A0:
-LDA $24,X					;
+LDA Score_InvertOperandFlag+4,X			;the weird flag (for player 1 score)
 BEQ CODE_F453					;
 
 CODE_F4A4:
-LDA $0020,Y					;
+LDA Score_InvertOperandFlag,Y			;that same weird flag (for TOP score)
 BNE CODE_F479					;
 
 CODE_F4A9:
@@ -10381,7 +10382,7 @@ CLC						;can't overwrite TOP score
 BCC CODE_F47E					;
 
 ;Handle various timers
-HandleTimers_F4AC:
+HandleGlobalTimers_F4AC:
 LDX #$09					;
 DEC Timer_Timing				;
 BPL LOOP_F4B8					;
@@ -10406,7 +10407,6 @@ RTS						;
 ;Input:
 ;$00, $01 - VRAM position for tile/attribute update
 ;Y - tile/attribute value
-;CODE_F4C2:
 VRAMUpdateSingle_F4C2:
 LDX BufferOffset				;get current offest within buffer
 
@@ -10534,6 +10534,7 @@ endif
 
 ;phase design (or layout, whichever you prefer), including palettes and attributes
 ;Phase 1
+Layout_Phase25M_F55B:
 DATA_F55B:
 ;First, palette.
 db $3F,$00
@@ -10732,8 +10733,8 @@ db $4E,$4F
 
 db VRAMWriteCommand_Stop
 
-;Phase 2
-DATA_F71C:
+;Phase 3 (100M)
+Layout_Phase100M_F71C:
 db $3F,$00					;palette changes
 db $08						;
 db $0F,$2C,$27,$02				;tile 0
@@ -10889,7 +10890,8 @@ db $72,$73
 
 db VRAMWriteCommand_Stop
 
-;Phase 3 (100M)
+;Phase 2 (75M)
+Layout_Phase75M_F7CD:
 DATA_F7CD:
 db $3F,$00
 db $08
@@ -11131,16 +11133,16 @@ db $75
 db VRAMWriteCommand_Stop
 
 ;VRAM Data for title screen (palettes, attributes and tiles)
-;Palette
-DATA_F8D9:
-db $3F,$00					;VRAM pos to write to
+Layout_TitleScreen_F8D9:
 
+;Palette
+db $3F,$00					;VRAM pos to write to
 db $0D						;write 13 bytes
 
 If Version = JP
   db $0F,$2C,$38,$02				;tile palette 0
 else
-  db $0F,$2C,$38,$12 				;US Version brightens "Donkey Kong" title
+  db $0F,$2C,$38,$12 				;US (or revision 1) Version brightens "Donkey Kong" title
 endif
 db $0F,$27,$27,$27				;tile palette 1
 db $0F,$30,$30,$30				;tile palette 2
@@ -11381,7 +11383,7 @@ db $13,$0A,$19,$0A,$17
 db VRAMWriteCommand_Stop
 
 ;data for hud - score symbols (I, II, TOP) and other counters
-DATA_FA1B:
+Layout_HUD_FA1B:
 db $20,$63
 db $01						;I
 db $FF
@@ -11410,60 +11412,62 @@ db VRAMWriteCommand_Stop
 
 org $FA48
 ;sound engine (fixed location for all versions)
-;CODE_FA48:
 
-;i'll be using Super Mario Bros. and Super Mario Bros. 3's sound engine as a reference, since they's similar in some aspects (I know Mario Bros. got an update, which I'll get to)
+;The engine is reused for most of Nintendo's games with some alterations (Donkey Kong Jr., Mario Bros., Super Mario Bros. etc.)
 SoundEngine_FA48:
 LDA #$C0					;
 STA APU_FrameCounter				;don't generate IRQs
 
-JSR CODE_FBF2					;play music/sound
+JSR HandleAllSound_FBF2				;play music/sound
 
 LDX #$00					;reset sound values
 STX Sound_Effect2				;
 STX Sound_Effect				;
 STX Sound_Fanfare				;
-    
-LDA $06F0                
-CMP #$90                 
-BCS CODE_FA64
 
-LDX #$00                 
-STX $06F1
-  
+LDA Sound_StepSFX_Frequency			;check if frequency too low
+CMP #$90					;
+BCS CODE_FA64					;keep subbing to frequency facts
+
+LDX #$00					;
+STX Sound_StepSFX_FrequencyMode			;will add now
+
 CODE_FA64:
-CMP #$D8                 
-BCC CODE_FA6B
+CMP #$D8					;check if frequency too high
+BCC CODE_FA6B					;Only Up! yes, I made that reference, we can get through this together.
 
-INC $06F1
-  
+INC Sound_StepSFX_FrequencyMode			;will sub now
+
 CODE_FA6B:
-TAY                      
-LSR A                    
-LSR A                    
-LSR A                    
-LSR A                    
-LSR A                    
-LSR A                    
-STA $00                  
-TYA                      
-LDX $06F1                
-BNE CODE_FA7F                
-SEC                      
-ADC $00                  
-BNE CODE_FA82
+TAY						;formula for changing frequency for each step:
+LSR A						;(Freq+/-(Freq/64))+/-1
+LSR A						;+/- is either + or minus, depending on Sound_StepSFX_FrequencyMode
+LSR A						;
+LSR A						;
+LSR A						;
+LSR A						;divide by 64
+STA $00						;
+TYA						;
 
-CODE_FA7F:  
-CLC                      
-SBC $00
+LDX Sound_StepSFX_FrequencyMode			;should add or substract?
+BNE CODE_FA7F					;
+
+SEC						;add previous value+1
+ADC $00						;
+BNE CODE_FA82					;
+
+CODE_FA7F:
+CLC						;sub previous value-1
+SBC $00						;
 
 CODE_FA82:
-STA $06F0                
-RTS
+STA Sound_StepSFX_Frequency			;
+RTS						;
 
+;get a hex value representing a specific bit into a bit index (bit 0-7)
+;this is basically LOG(x,2), where x is aligned to the value to the power of 2 (2,4,8,16 until 128)
 ;get a bit into a bit number (bit 0-7)
-;BitToNum_FA86:
-CODE_FA86:
+GetBitIndex_FA86:
 LDY #$07					;
 
 CODE_FA88:
@@ -11475,100 +11479,117 @@ BNE CODE_FA88					;if there are still bits left, loop
 ;otherwise it's assumed that bit 0 is set
 
 RETURN_FA8E:
-RTS					;
+RTS						;
 
-CODE_FA8F:
-STA $F1                  
-STY $F2                  
+;A - sound effect length
+;Y - frequency
+;X - duty and volume bits
+InitalizeSquare1SFX_FA8F:
+STA Sound_Effect2_Length			;Sound_Effect2_Length
+STY Sound_Square_Frequency			;
 
-CODE_FA93:
-LDY #$7F					;square's "sweep unit" is disabled, negate flag, shift and period at max    
+SetSquare1DutyAndVolumeWithNoSweep_FA93:
+LDY #$7F					;default APU sweep (disabled)
 
-CODE_FA95:
-STX $4000
-STY $4001					;
-RTS
+;input:
+;Y - pulse sweep bits
+;X - pulse duty and volume bits
+SetSquare1DutyAndVolumeAndSweep_FA95:
+STX APU_Square1DutyAndVolume			;
+STY APU_Square1Sweep				;
+RTS						;
 
-JSR CODE_FA95					;inaccessible line of code
+JSR SetSquare1DutyAndVolumeAndSweep_FA95	;inaccessible line of code
 
-;SetFreq_Squ1_FA9F:
-CODE_FA9F:
-LDX #$00
+SetSquare1Frequency_FA9F:
+LDX #$00					;
 
-CODE_FAA1:   
-TAY                      
-LDA UNUSED_FB00+1,Y				;FreqRegLookupTbl
-BEQ RETURN_FAB2                
-STA $4002,X 
+;Input A - frequency lookup table index
+SetChannelFrequency_FAA1:
+TAY						;
+LDA ChannelFrequencyLookup_FB00+1,Y		;
+BEQ NoChannelFrequency_FAB2			;if zero, no frequency for you!
+STA APU_ChannelFrequency,X			;
 
-LDA UNUSED_FB00,Y              
-ORA #$08                 
-STA $4003,X
-  
-RETURN_FAB2:
-RTS
+LDA ChannelFrequencyLookup_FB00,Y		;
+ORA #$08					;ensures that the note is held for long & doesn't end abruptly (doesn't matter much for triangle with its two timers, where one is shorter)
+STA APU_ChannelFrequencyHigh,X			;
 
-CODE_FAB3:
-STY $4005
+NoChannelFrequency_FAB2:
+RTS						;
 
-LDX #$04                 
-BNE CODE_FAA1
+;A - frequency value index
+;Y - square sweep
+SetSquare2SweepAndFrequency_FAB3:
+STY APU_Square2Sweep				;
 
-;play triangle sound
-CODE_FABA:
-STA $4008				;
-TXA					;
-AND #$3E				;
-LDX #$08				;offset for triangle's APU registers
-BNE CODE_FAA1				;
+LDX #$04					;
+BNE SetChannelFrequency_FAA1			;
 
-;AlternateLengthHandler_FAC4:
-CODE_FAC4:
-TAX                      
-ROR A                    
-TXA                      
-ROL A
-ROL A
-ROL A
+;A - triangle's note timer (or bit 7 for constant note)
+;X - frequency value index
+SetTriangleFrequencyAndLength_FABA:
+STA APU_TriangleLinearCounter			;
 
-;ProcessLengthData_FACA:
-CODE_FACA:  
+TXA						;
+AND #$3E					;
+LDX #$08					;offset for triangle's APU registers
+BNE SetChannelFrequency_FAA1			;
+
+;AlternateLengthHandler in SMB (i just stole those labels because idk what else to call these)
+;to be honest, idk what this is for really (it calculates the note length index thing by shifting bits and used for everything but square 2 during fanfare)
+AlternateLengthHandler_FAC4:
+TAX						;
+ROR A						;
+TXA						;
+ROL A						;
+ROL A						;
+ROL A						;changes xx00000x into 00000xxx
+
+ProcessLengthData_FACA:
 AND #$07					;
 CLC						;
 ADC Sound_NoteLengthOffset			;
 TAY						;
-LDA DATA_FB4C,Y					;get note length from this little table
+LDA ChannelLengthLookup_FB4C,Y			;get note length from this little table
 RTS						;
 
-CODE_FAD5:
-TYA                      
-LSR A
+;divide base value by 8
+SubstractOne8th_FAD5:
+TYA						;
+LSR A						;
 
-CODE_FAD7:
-LSR A                    
-LSR A                    
-STA $00                  
-TYA                      
-SEC                      
-SBC $00                  
-RTS                      
+;divide by 4
+SubstractOne4th_FAD7:
+LSR A						;
+LSR A						;
+STA $00						;
 
-CODE_FAE0:
-LDA #$90                 
-STA $4000                
-RTS
+;base value minus the divided one (either base-(base/4) or base-(base/8)
+TYA						;
+SEC						;
+SBC $00						;
+RTS						;
 
+MuteSquare1_FAE0:
+LDA #$90					;constant volume (no volume) and duty output waveform 50%
+STA APU_Square1DutyAndVolume			;
+RTS						;
+
+;sweep values for Step SFX
 DATA_FAE6:
 db $8D,$8D,$8C,$8C,$8B,$8C,$83,$83
 db $8F,$8F,$8F,$8F,$8D,$85,$84
 
+;sweep values for Jump SFX (if bit 7 is clear (values below $80) sweep is disabled)
 DATA_FAF5:
 db $85,$7F,$85,$85,$85,$7F,$8D,$8D
-db $8D,$8D,$8D           
+db $8D,$8D,$8D
 
 ;first three bytes are unused
-UNUSED_FB00:
-db $07,$F0,$00
+
+ChannelFrequencyLookup_FB00:
+db $07,$F0,$00					;first 3 bytes are unused
 
 db $00,$00,$69,$00,$53,$00,$46,$00
 db $D4,$00,$BD,$00,$A8,$00,$9F,$00
@@ -11586,7 +11607,7 @@ db $05,$9E,$05,$4D,$05,$01,$04,$75
 db $04,$35,$03,$F8,$03,$BF,$03,$89
 
 ;note length data
-DATA_FB4C:
+ChannelLengthLookup_FB4C:
 db $05,$0A,$14,$28,$50,$1E,$3C,$0B
 db $06,$0C,$18,$30,$60,$24
 
@@ -11594,347 +11615,368 @@ db $48						;unused
 
 db $07,$0D,$1A,$34,$78,$27,$4E
 
+;TriangleNoteLength_FB62:
 DATA_FB62:
 db $0A,$08,$05,$0A,$09
 
+;player dead square frequency values
 DATA_FB67:
 db $50,$40,$46,$4A,$50,$56,$5C,$64
 db $6C,$74,$7C,$88,$90,$9A
 
 CODE_FB75:
-STA $F0                  
-STA $FB
+STA Sound_Effect2_Current			;
+STA Sound_CurrentFanfareID			;
 
-LDY #$08					;technically 9th fanfare (Sound_Effect2_Dead part 2)
-JMP CODE_FD67					;
+LDY #$08					;technically 9th fanfare (Sound_Effect2_PlayerDead part 2)
+JMP CODE_FD67					;sneaky
 
+InitPlayerDeadSFX_FB7E:
 CODE_FB7E:
-STY $F0
+STY Sound_Effect2_Current			;
 
-LDA #$71                 
-LDY #$00                 
-LDX #$9F                 
-JSR CODE_FA8F                
+LDA #$71					;
+LDY #$00					;
+LDX #$9F					;
+JSR InitalizeSquare1SFX_FA8F			;
 
-CODE_FB89:
-LDX $F2                  
-LDY DATA_FB67,X              
-    
-DEC $F1                  
-LDA $F1                  
-BEQ CODE_FB75                
-AND #$07                 
-BNE CODE_FBA0                
-TYA                      
-LSR A                    
-ADC DATA_FB67,X              
-TAY                      
-BNE CODE_FBA7
+PlayPlayerDeadSFX_FB89:
+LDX Sound_Square_Frequency			;not actual frequency value, but frequency index
+LDY DATA_FB67,X					;
+
+DEC Sound_Effect2_Length			;tick
+LDA Sound_Effect2_Length			;
+BEQ CODE_FB75					;if sound effect ended... ENCORE!!
+AND #$07					;
+BNE CODE_FBA0					;
+TYA						;
+LSR A						;
+ADC DATA_FB67,X					;
+TAY						;frequency + (frequency/2)
+BNE CODE_FBA7					;
 
 CODE_FBA0:
-AND #$03                 
-BNE CODE_FBB2
-    
-INC $F2                  
-CLC
-  
+AND #$03					;
+BNE CODE_FBB2					;
+
+INC Sound_Square_Frequency			;
+CLC						;always clear carry for above branch
+
 CODE_FBA7:
-STY $4002
- 
-LDY #$28                 
-BCC CODE_FBAF
+STY APU_Square1Frequency			;
 
-INY						;unused (branch before will always trigger)
+LDY #$28					;
+BCC CODE_FBAF					;
 
-CODE_FBAF:      
-STY $4003
-  
+INY						;handle high byte (+$0100)
+
+CODE_FBAF:
+STY APU_Square1FrequencyHigh			;
+
 CODE_FBB2:
-LDA #$00
-JMP CODE_FE00
-  
-CODE_FBB7:
-STY $F0
+LDA #$00					;
+JMP CODE_FE00					;no triangle
 
-LDA #$54                 
-LDY #$6A                 
-LDX #$9C                 
-JSR CODE_FA8F
-  
-CODE_FBC2:
-LDY $F2                  
-LDA $F1                  
-AND #$03                 
-BEQ CODE_FBD4                
-CMP #$03                 
-BNE CODE_FBD9
+InitEnemyDestructSFX_FBB7:
+STY Sound_Effect2_Current			;
 
-JSR CODE_FAD5                
-STA $F2                  
-TAY
+LDA #$54					;
+LDY #$6A					;
+LDX #$9C					;
+JSR InitalizeSquare1SFX_FA8F			;
+
+PlayEnemyDestructSFX_FBC2:
+LDY Sound_Square_Frequency			;
+LDA Sound_Effect2_Length			;
+AND #$03					;
+BEQ CODE_FBD4					;first frame?
+CMP #$03					;
+BNE CODE_FBD9					;fourth frame?
+
+JSR SubstractOne8th_FAD5			;frequency lowers slightly (higher pitch)
+STA Sound_Square_Frequency			;
+TAY						;
 
 CODE_FBD4:
-TYA                      
-LSR A                    
-ADC $F2                  
-TAY
+TYA						;
+LSR A						;
+ADC Sound_Square_Frequency			;
+TAY						;
 
 CODE_FBD9:
-TYA                      
-ROL A                    
-ROL A                    
-ROL A                    
-STA $4002                
-ROL A                    
-STA $4003
+TYA						;
+ROL A						;
+ROL A						;
+ROL A						;
+STA APU_Square1Frequency			;
+ROL A						;
+STA APU_Square1FrequencyHigh			;
 
-LDA $F1                  
-CMP #$18                 
-BCS CODE_FC44                
-LSR A                    
-ORA #$90                 
-STA $4000                
-BNE CODE_FC44                
-
-CODE_FBF2:
-LDY Sound_Effect2				;
-LDA $F0						;keep playing dead sound
+LDA Sound_Effect2_Length			;
+CMP #$18					;
+BCS CODE_FC44					;
 LSR A						;
-BCS CODE_FB89					;
+ORA #$90					;ensure the volume is constant and pulse width at 50%
+STA APU_Square1DutyAndVolume			;
+BNE CODE_FC44					;
+
+HandleAllSound_FBF2:
+HandleSound_Effect2_FBF2:
+LDY Sound_Effect2				;
+LDA Sound_Effect2_Current			;keep playing dead sound
+LSR A						;
+BCS PlayPlayerDeadSFX_FB89			;
+
 LSR Sound_Effect2				;$01 - died
-BCS CODE_FB7E					;
+BCS InitPlayerDeadSFX_FB7E			;
 
 LDX Sound_FanfareSquareTrackOffset		;playing fanfare that uses square
-BNE CODE_FC4B					;no sound effects?
-LSR A						;keep playing enemy destruction sound
-BCS CODE_FBC2					;
-LSR Sound_Effect2				;$02 - enemy destruct
-BCS CODE_FBB7					;
-LSR A						;keep playing jump sound
-BCS CODE_FC28					;
-LSR Sound_Effect2				;$04 - jump
-BCS CODE_FC19					;
-LSR A						;keep playing movement sound
-BCS CODE_FC62					;
-LSR Sound_Effect2				;$08 - movement sound
-BCS CODE_FC51					;
+BNE EndSound_Effect2_FC4B			;no sound effects?
+
+LSR A						;
+BCS PlayEnemyDestructSFX_FBC2			;continue playing Sound_Effect2_EnemyDestruct
+
+LSR Sound_Effect2				;
+BCS InitEnemyDestructSFX_FBB7			;init Sound_Effect2_EnemyDestruct
+
+LSR A						;
+BCS PlayJumpSFX_FC28				;continue playing Sound_Effect2_Jump
+
+LSR Sound_Effect2				;
+BCS InitJumpSFX_FC19				;init Sound_Effect2_Jump
+
+LSR A						;
+BCS PlayStepSFX_FC62				;continue playing Sound_Effect2_Step
+
+LSR Sound_Effect2				;
+BCS InitStepSFX_FC51				;init Sound_Effect2_Step
 
 CODE_FC16:
-JMP CODE_FC90					;otherwise handle hit sound (Sound_Effect_Hit)
-  
-CODE_FC19:
-STY $F0
+JMP HandleSound_Effect_FC90			;otherwise handle Sound_Effect sounds
 
-LDA #$22
-STA $F1
+InitJumpSFX_FC19:
+STY Sound_Effect2_Current			;
 
-LDY #$0B                 
-STY $F2
+LDA #$22					;
+STA Sound_Effect2_Length			;
 
-LDA #$20                 
-JSR CODE_FA9F
-  
-CODE_FC28:
-DEC $F2                  
-BNE CODE_FC30
+LDY #$0B					;
+STY Sound_Square_SweepIndex			;
 
-LDA #$07                 
-STA $F2
-  
+LDA #$20					;
+JSR SetSquare1Frequency_FA9F			;
+
+PlayJumpSFX_FC28:
+DEC Sound_Square_SweepIndex			;
+BNE CODE_FC30					;
+
+LDA #$07					;
+STA Sound_Square_SweepIndex			;reset sweep stuff
+
 CODE_FC30:
-LDX $F2                  
-LDY DATA_FAF5,X
-LDX #$5A                 
-LDA $F1                  
-CMP #$14                 
-BCS CODE_FC41                
-LSR A                    
-ORA #$50                 
-TAX
-  
+LDX Sound_Square_SweepIndex			;
+LDY DATA_FAF5,X					;
+LDX #$5A					;constant volume & duty at 25%
+
+LDA Sound_Effect2_Length			;
+CMP #$14					;
+BCS CODE_FC41					;
+LSR A						;basically every second frame, the volume will fade slightly
+ORA #$50					;don't forget that the volume is constant & duty at 25%
+TAX						;
+
 CODE_FC41:
-JSR CODE_FA95
+JSR SetSquare1DutyAndVolumeAndSweep_FA95	;
 
-CODE_FC44:  
-DEC $F1                  
-BNE CODE_FC16                
-JSR CODE_FAE0
-  
-CODE_FC4B:
-LDA #$00                 
-STA $F0                  
-BEQ CODE_FC16
-  
-CODE_FC51:
-STY $F0
+CODE_FC44:
+DEC Sound_Effect2_Length			;
+BNE CODE_FC16					;
 
-LDA #$0A                 
-STA $F1
+JSR MuteSquare1_FAE0				;SILENCE!!!
 
-LDY $06F0                
-STY $4002
- 
-LDA #$88                 
-STA $4003
+EndSound_Effect2_FC4B:
+LDA #$00					;
+STA Sound_Effect2_Current			;no more sfx
+BEQ CODE_FC16					;
 
-CODE_FC62:
-LDA $18                  
-AND #$08                 
-CLC                      
-ADC $F1                  
-ADC #$FE                 
-TAX                      
-LDY DATA_FAE6-1,X              
-LDX #$41                 
-BNE CODE_FC41
+InitStepSFX_FC51:
+STY Sound_Effect2_Current			;
 
-CODE_FC73:  
-LDA #$0E                 
-STA $06A5
+LDA #$0A					;
+STA Sound_Effect2_Length			;
 
-LDY #$85                 
-LDA #$46                 
-JSR CODE_FAB3
-  
-CODE_FC7F:
-DEC $06A5                
-BEQ CODE_FC9D
+LDY Sound_StepSFX_Frequency			;
+STY APU_Square1Frequency			;
 
-LDA $06A5                
-ORA #$90                 
-TAY                      
-DEY                      
-STY $4004                
-BNE CODE_FC9D
-  
-CODE_FC90:
-LDA $F3                  
-BNE CODE_FC9D
-   
-LDA $06A5                
-BNE CODE_FC7F
+LDA #$88					;
+STA APU_Square1FrequencyHigh			;
 
-LDY $FE                  
-BMI CODE_FC73
-  
-CODE_FC9D:
-LDA Sound_Music					;check if should play music
-BNE CODE_FD0B					;init music?
+PlayStepSFX_FC62:
+LDA RNG_Value					;RNG is important
+AND #$08					;
+CLC						;
+ADC Sound_Effect2_Length			;
+ADC #$FE					;(this basically subtracts 2)
+TAX						;
+
+LDY DATA_FAE6-1,X				;
+LDX #$41					;25% wave width duty thing stuff (volume fades out on its own, and fairly low volume?)
+BNE CODE_FC41					;
+
+InitHitSFX_FC73:  
+LDA #$0E					;play this long
+STA Sound_HitSFX_Length				;
+
+LDY #$85					;
+LDA #$46					;
+JSR SetSquare2SweepAndFrequency_FAB3		;
+
+PlayHitSFX_FC7F:
+DEC Sound_HitSFX_Length				;
+BEQ HandleSound_Effect_ProcessOtherSFX_FC9D	;
+
+LDA Sound_HitSFX_Length				;
+ORA #$90					;50% duty
+TAY						;
+DEY						;
+STY APU_Square2DutyAndVolume			;
+BNE HandleSound_Effect_ProcessOtherSFX_FC9D	;
+
+HandleSound_Effect_FC90:
+LDA Sound_FanfareSquare2TrackOffset		;occupied by fanfare
+BNE HandleSound_Effect_ProcessOtherSFX_FC9D	;can't play hit SFX (but can play others)
+
+LDA Sound_HitSFX_Length				;are we playing hit SFX?
+BNE PlayHitSFX_FC7F				;do plz
+
+LDY Sound_Effect				;init
+BMI InitHitSFX_FC73				;
+
+;already handled Hit SFX, see if we can play something else
+HandleSound_Effect_ProcessOtherSFX_FC9D:
+LDA Sound_Music					;cannot play these sound effects if there's music in the background
+BNE HandleSound_Music_FD0B			;
 
 LDA Sound_FanfareTriangleTrackOffset		;is triangle being used?
-BNE CODE_FD0B					;keep on playing
+BNE HandleSound_Music_FD0B			;keep on playing
 
-;play sound effect
-LDY Sound_Effect
-LDA $06A1                
-LSR Sound_Effect
-BCS CODE_FCBA                
-LSR A                    
-BCS CODE_FCBE                
-LSR A                    
-BCS CODE_FCF0                
-LSR Sound_Effect
-BCS CODE_FCDB                
-BCC CODE_FD0B					;not playing a sound effect, skip ahead
-  
-CODE_FCBA:
-LDA #$28                 
-BNE CODE_FCDD
-  
+LDY Sound_Effect				;
+LDA Sound_Effect_Current			;
+
+LSR Sound_Effect				;
+BCS InitFallSFX_FCBA				;init Sound_Effect_Fall
+
+LSR A						;
+BCS PlayFallSFX_FCBE				;continue playing Sound_Effect_Fall
+
+LSR A						;
+BCS PlaySpringBounceSFX_FCF0			;continue playing Sound_Effect_SpringBounce
+
+LSR Sound_Effect				;
+BCS InitSpringBounceSFX_FCDB			;init Sound_Effect_SpringBounce
+
+BCC HandleSound_Music_FD0B			;not playing a sound effect, skip ahead
+
+InitFallSFX_FCBA:
+LDA #$28					;
+BNE CODE_FCDD					;share part of the code with spring bounce SFX (only different frequency)
+
+PlayFallSFX_FCBE:
 CODE_FCBE:
-LDA $F5                  
-BNE CODE_FCC6
- 
-LSR $FE                  
-BCS CODE_FCDB
+LDA Sound_Effect_Length				;
+BNE CODE_FCC6					;should we keep playing sound
+
+LSR Sound_Effect				;check if we should play spring SFX. ok.
+BCS InitSpringBounceSFX_FCDB			;I guess this is done so both sound effects have equal priority and can replace one another
 
 CODE_FCC6:
-LDA $F6                  
-LSR A                    
-LSR A                    
-LSR A                    
-LSR A                    
-LSR A                    
-ADC $F6                  
-BCC CODE_FD00
+LDA Sound_Triangle_Frequency			;
+LSR A						;
+LSR A						;
+LSR A						;
+LSR A						;
+LSR A						;
+ADC Sound_Triangle_Frequency			;(frequency/32)+frequency (+1 if carry set, ofc)
+BCC CODE_FD00					;
 
-CODE_FCD1:
-LDA #$00                 
-STA $06A1                
-STA $4008                
-BEQ CODE_FD0B
-  
-CODE_FCDB:
-LDA #$FE
-  
+EndPlaying_Sound_Effect_FCD1:
+LDA #$00					;
+STA Sound_Effect_Current			;
+STA APU_TriangleLinearCounter			;no triangle
+BEQ HandleSound_Music_FD0B			;move onto music or looping sort of sound
+
+InitSpringBounceSFX_FCDB:
+LDA #$FE					;
+
 CODE_FCDD:
-STY $06A1
+STY Sound_Effect_Current			;
 
-LDX #$0E                 
-STX $F5
-  
-LDY #$FF                 
-STY $4008
- 
-LDY #$08                 
-STY $400B                
-BNE CODE_FD00
-  
-CODE_FCF0:
-LDA #$FE                 
-LDY $F5                  
-BEQ CODE_FCD1                
-CPY #$07                 
-BEQ CODE_FD00
- 
-LDA $F6                  
-TAY                      
-JSR CODE_FAD7
+LDX #$0E					;
+STX Sound_Effect_Length				;
 
-CODE_FD00:  
-STA $F6                  
-STA $400A
+LDY #$FF					;
+STY APU_TriangleLinearCounter			;
 
-LDA $F5                  
-BEQ CODE_FD0B
+LDY #$08					;
+STY APU_TriangleFrequencyHigh			;
+BNE CODE_FD00					;
 
-DEC $F5
+PlaySpringBounceSFX_FCF0:
+LDA #$FE					;default frequency
+LDY Sound_Effect_Length				;
+BEQ EndPlaying_Sound_Effect_FCD1		;
+CPY #$07					;
+BEQ CODE_FD00					;basically restores the frequency
 
-CODE_FD0B:  
+LDA Sound_Triangle_Frequency			;chip away at the frequency
+TAY						;
+JSR SubstractOne4th_FAD7			;
+
+CODE_FD00:
+STA Sound_Triangle_Frequency			;
+STA APU_TriangleFrequency			;
+
+LDA Sound_Effect_Length				;if at 0, don't decrease anymore, ofc
+BEQ HandleSound_Music_FD0B			;
+
+DEC Sound_Effect_Length				;
+
+HandleSound_Music_FD0B:
+CODE_FD0B:
 LDX Sound_FanfareSquareTrackOffset		;don't play music during certain fanfares that use square?
-BNE CODE_FD58					;
+BNE HandleSound_Fanfare_FD58			;
 
 LDA Sound_Music					;check if we're trying to play some music
 BNE CODE_FD18					;yes we are
-STA Sound_MusicMirror				;clear the mirror
-BEQ CODE_FD58					;and play no music
+STA Sound_Music_Current				;not playing anymore...
+BEQ HandleSound_Fanfare_FD58			;
 
-CODE_FD18:  
-EOR Sound_MusicMirror				;check if we're trying to play the same musc
+CODE_FD18:
+EOR Sound_Music_Current				;check if we're trying to play the same musc
 BEQ CODE_FD35					;continue playing triangle as the god intended if it's the same song
 
 CODE_FD1D:
 LDA Sound_Music					;initialize song and remember that we're playing this one
-STA Sound_MusicMirror				;
-JSR CODE_FA86					;
+STA Sound_Music_Current				;
+JSR GetBitIndex_FA86				;
 
-LDA DATA_FFCD,Y					;initialize triangle beat counter (the table is all zeroes though...)
-STA Sound_TriangleTrackOffset			;
+LDA MusicDataOffsets_FFCD,Y			;initialize triangle beat counter
+STA Sound_MusicTriangleTrackOffset		;
 
-LDA #<DATA_FFD4					;setup pointer
+LDA #<MusicData_FFD4				;setup pointer
 STA Sound_MusicDataPointer			;
 
-LDA #>DATA_FFD4					;    
+LDA #>MusicData_FFD4				;
 STA Sound_MusicDataPointer+1			;
-BNE CODE_FD3A					;always branch (a rarity!)
-  
+BNE CODE_FD3A					;always branch
+
 CODE_FD35:
-DEC Sound_TriangleTimer				;Tri_NoteLenCounter/Music_TriRest
-BNE CODE_FD58					;if the triangle is still playing, do something else
-  
+DEC Sound_TriangleNoteLength			;Tri_NoteLenCounter/Music_TriRest
+BNE HandleSound_Fanfare_FD58			;if the triangle is still playing, do something else
+
 CODE_FD3A:
-LDY Sound_TriangleTrackOffset			;Sound_TriangleTrackOffset
-INC Sound_TriangleTrackOffset			;next time different timing
+LDY Sound_MusicTriangleTrackOffset		;
+INC Sound_MusicTriangleTrackOffset		;next time different timing
 LDA (Sound_MusicDataPointer),Y			;get triangle timing
 BEQ CODE_FD1D					;did we hit the end of triangle channel? if so, maybe loop
 TAX						;\basically AlternateLengthHandler_FAC4 (which will be replaced with proper JSR in later iterations)
@@ -11946,255 +11988,306 @@ ROL A						;|
 AND #$07					;|
 TAY						;/
 LDA DATA_FB62,Y					;
-STA Sound_TriangleTimer				;wait this long
+STA Sound_TriangleNoteLength			;play for this long
 
 LDA #$10					;default triangle value ($4008)
-JSR CODE_FABA					;play da sound
-  
-CODE_FD58:
+JSR SetTriangleFrequencyAndLength_FABA		;play da sound
+
+HandleSound_Fanfare_FD58:
 LDA Sound_Fanfare				;should we initialize some fanfare?
 BNE CODE_FD62					;yes!
 
 LDA Sound_FanfarePlayFlag			;continue playing fanfare?
-BNE CODE_FD9B					;yes
+BNE ProcessFanfareSquare_FD9B			;yes
 RTS						;no, return
 
 ;initialize fanfare variables
 CODE_FD62:
-JSR CODE_FA86					;bit num
+JSR GetBitIndex_FA86				;bit num
 STY Sound_CurrentFanfareID			;
 
 CODE_FD67:
-LDA DATA_FE59,Y					;get offset for this fanfare
+LDA FanfareHeaders_FE59,Y			;get offset for this fanfare
 TAY						;
 
-LDA DATA_FE59,Y					;
+LDA FanfareHeaders_FE59,Y			;
 STA Sound_NoteLengthOffset			;
 
-LDA DATA_FE59+1,Y				;pointer for the tracks
-STA Sound_SoundDataPointer			;
+LDA FanfareHeaders_FE59+1,Y			;\note data pointer (square 1 + maybe other channels, based on offset)
+STA Sound_SoundDataPointer			;|
+						;|
+LDA FanfareHeaders_FE59+2,Y			;|
+STA Sound_SoundDataPointer+1			;/
 
-LDA DATA_FE59+2,Y				;
-STA Sound_SoundDataPointer+1			;
+LDA FanfareHeaders_FE59+3,Y			;play or don't play triangle
+STA Sound_FanfareTriangleTrackOffset		;
 
-LDA DATA_FE59+3,Y				;
-STA Sound_FanfareTriangleTrackOffset		;Triangle table offset
-
-LDA DATA_FE59+4,Y				;
-STA Sound_FanfareSquareTrackOffset		;Square table offset
+LDA FanfareHeaders_FE59+4,Y			;play or don't play square 2 (???)
+STA Sound_FanfareSquareTrackOffset		;
 
 LDA #$01					;
-STA Sound_NoiseTimer				;always play noise
-STA Sound_SquareTimer				;maybe play square
-STA Sound_TriangleTimer				;maybe play triangle
+STA Sound_Square2NoteLength			;always play square 2
+STA Sound_SquareNoteLength			;maybe play square 1
+STA Sound_TriangleNoteLength			;maybe play triangle
 STA Sound_FanfarePlayFlag			;do play fanfare plz
 
-LDY #$00					;initialize noise track
-STY Sound_FanfareNoiseTrackOffset		;
+LDY #$00					;init square 2 offset (even if it's not the main channel, but ok)
+STY Sound_FanfareSquare2TrackOffset		;
 
-LDA Sound_CurrentFanfareID			;check if current fanfare is Sound_Fanfare_GameStart
+LDA Sound_CurrentFanfareID			;check if current fanfare is Sound_Fanfare_GameStart OR Sound_Fanfare_DeadPart2 (since it doesn't set Sound_CurrentFanfareID/doesn't have a unique bit associated with it)
 BEQ CODE_FDA4					;play constant square sound
 
-CODE_FD9B:
+ProcessFanfareSquare_FD9B:
 LDY Sound_FanfareSquareTrackOffset		;playing square?
 BEQ CODE_FDD8					;no, don't
 
-DEC Sound_SquareTimer				;
-BNE CODE_FDD8					;timer is still ticking!
+DEC Sound_SquareNoteLength			;keep the same square sound for a while
+BNE CODE_FDD8					;note still playing...
 
 ;initialize square
 CODE_FDA4:
-INC Sound_FanfareSquareTrackOffset		;next byte of the table for the next re-initialization
+INC Sound_FanfareSquareTrackOffset		;next pulse (square) value
+
 LDA (Sound_SoundDataPointer),Y			;
-BEQ CODE_FDE9					;end fanfare prematurely if hit 0 (omly for game start sound)
+BEQ EndFanfare_FDE9				;fanfare stops completely once it reaches 0
 BPL CODE_FDB8					;if positive, keep the same timing, just change the beat
 
-JSR CODE_FACA                
-STA Sound_SquareTimerSaved			;timer backup
+JSR ProcessLengthData_FACA			;
+STA Sound_SquareNoteLengthSaved			;change amount of time for square to play the beat
 
 LDY Sound_FanfareSquareTrackOffset		;
 INC Sound_FanfareSquareTrackOffset		;
-LDA ($F7),Y					;now load beat
+LDA (Sound_SoundDataPointer),Y			;next square value
 
 CODE_FDB8:
-JSR CODE_FA9F					;store to registers to play sound
-BNE CODE_FDC1					;if the result was non-zero, go on
+JSR SetSquare1Frequency_FA9F			;set frequency
+BNE CODE_FDC1					;check if set frequency or not
 
-LDY #$10					;some kinda default then...
+LDY #$10					;essentially mutes square
 BNE CODE_FDCF					;
-  
-CODE_FDC1:
-LDX #$9F					;more beat setup
-LDA Sound_CurrentFanfareID			;check if we're playing Sound_Fanfare_GameStart
-BEQ CODE_FDCF					;yes, some specific register value
 
-LDX #$06					;for other fanfares, this
+CODE_FDC1:
+LDX #$9F					;max volume that fades out, pulse width = 50%
+LDA Sound_CurrentFanfareID			;check if we're playing Sound_Fanfare_GameStart
+BEQ CODE_FDCF					;yes, we set the above-mentioned square 1 settings
+
+LDX #$06					;pulse width = 12.5%
 LDA Sound_FanfareTriangleTrackOffset		;unless there's no triangle channel
 BNE CODE_FDCF					;
 
-LDX #$86
-  
-CODE_FDCF:
-JSR CODE_FA93
+LDX #$86					;pulse width = 50%
 
-LDA Sound_SquareTimerSaved			;could be the same as last time or changed to a new value
-STA Sound_SquareTimer				;actually store
-  
+CODE_FDCF:
+JSR SetSquare1DutyAndVolumeWithNoSweep_FA93
+
+LDA Sound_SquareNoteLengthSaved			;play the square note for this long
+STA Sound_SquareNoteLength			;
+
 CODE_FDD8:
 LDA Sound_CurrentFanfareID			;check if fanfare was Sound_Fanfare_GameStart
-BEQ CODE_FE31					;keep the same noise, play triangle
+BEQ ProcessFanfareTriangle_FE31			;NO square 2, apparently
 
-DEC Sound_NoiseTimer				;if timer isn't 0, maybe play triangle
-BNE CODE_FE31					;
+DEC Sound_Square2NoteLength			;if timer isn't 0, maybe play triangle
+BNE ProcessFanfareTriangle_FE31			;
 
-LDY Sound_FanfareNoiseTrackOffset		;
-INC Sound_FanfareNoiseTrackOffset		;
-LDA (Sound_SoundDataPointer),Y			;
-BNE CODE_FE09					;keep playing noise if not 0
+LDY Sound_FanfareSquare2TrackOffset		;
+INC Sound_FanfareSquare2TrackOffset		;square 2 value for next time
+
+LDA (Sound_SoundDataPointer),Y			;reached the end of the jingle/song?
+BNE ProcessFanfareSquare2_FE09			;if not, continue sound stuff
 
 ;the track has ended
-CODE_FDE9:
-JSR CODE_FAE0					;set square register to default
+EndFanfare_FDE9:
+JSR MuteSquare1_FAE0				;no more square
 
 LDA #$00					;
 STA Sound_FanfareSquareTrackOffset		;no more fanfare square!
-STA Sound_FanfareNoiseTrackOffset		;no more fanfare noise!
+STA Sound_FanfareSquare2TrackOffset		;no more fanfare square 2!
 STA Sound_FanfareTriangleTrackOffset		;no more fanfare triangle!
 STA Sound_FanfarePlayFlag			;no more fanfare fanfare!
 
-LDY Sound_CurrentFanfareID			;check if fanfare was Sound_Fanfare_GameStart
-BEQ CODE_FE00					;keep the triangle, maybe?
+LDY Sound_CurrentFanfareID			;check if fanfare is NOT GameStart
+BEQ CODE_FE00					;dont keep square 2
 
-LDY $06A1					;
-BNE CODE_FE03
-  
+LDY Sound_Effect_Current			;I guess if there's some SFX playing, do keep triangle (since its utilized by Sound_Effect sound effects)
+BNE CODE_FE03					;
+
 CODE_FE00:
-STA $4008					;reset triangle
+STA APU_TriangleLinearCounter			;reset triangle
 
 CODE_FE03:
 LDA #$10					;
-STA $4004					;more default square
-RTS
+STA APU_Square2DutyAndVolume			;no square 2
+RTS						;
 
-CODE_FE09:
-JSR CODE_FAC4					;
-STA Sound_NoiseTimer				;timing for the next noise
+ProcessFanfareSquare2_FE09:
+JSR AlternateLengthHandler_FAC4			;calculate square 2 note length
+STA Sound_Square2NoteLength			;
 TXA						;
 AND #$3E					;
-LDY #$7F					;
-JSR CODE_FAB3					;play noise
-BNE CODE_FE1D					;something...
+LDY #$7F					;NO SWEEP
+JSR SetSquare2SweepAndFrequency_FAB3		;and frequency
+BNE CODE_FE1D					;if NO frequency, then actually don't play square 2 at the moment, move onto something else
 
-LDX #$10                 
-BNE CODE_FE2E
-  
+LDX #$10					;no square 2
+BNE CODE_FE2E					;
+
 CODE_FE1D:
-LDX #$89                 
-LDA Sound_NoiseTimer				;check if timer is higher than
-CMP #$18					;this right here value
-BCS CODE_FE2E					;...yeah, no clue
+LDX #$89					;higher volume
+LDA Sound_Square2NoteLength			;
+CMP #$18					;the note will go out in volume after a certain amount of time has passed (without relying on built-in volume fade)
+BCS CODE_FE2E					;
 
-LDX #$86                 
-CMP #$10                 
-BCS CODE_FE2E
+LDX #$86					;lower volume
+CMP #$10					;
+BCS CODE_FE2E					;should fade out more or nah?
 
-LDX #$84
+LDX #$84					;even lower volume
 
 CODE_FE2E:
-STX $4004
+STX APU_Square2DutyAndVolume			;
 
-CODE_FE31:
+ProcessFanfareTriangle_FE31:
 LDY Sound_FanfareTriangleTrackOffset		;
 BEQ RETURN_FE58					;if zero, no triangle
 
-DEC Sound_TriangleTimer				;should update triangle?
+DEC Sound_TriangleNoteLength			;should update triangle?
 BNE RETURN_FE58					;no, count down
 
 INC Sound_FanfareTriangleTrackOffset		;
 LDA (Sound_SoundDataPointer),Y			;
-JSR CODE_FAC4					;fetch time for the next beat
-STA Sound_TriangleTimer				;
+JSR AlternateLengthHandler_FAC4			;fetch time for the next beat
+STA Sound_TriangleNoteLength			;
 CLC						;
 ADC #$FE					;
 ASL A						;
 ASL A						;
-CMP #$38					;this is a max value for triangle, whatever that value is
+CMP #$38					;must be below a certain threshold
 BCC CODE_FE4F					;
 
-LDA #$38
+LDA #$38					;
 
 CODE_FE4F:
 LDY Sound_CurrentFanfareID			;is it Sound_Fanfare_GameStart that's playing?
 BNE CODE_FE55					;
 
-LDA #$FF					;some specific hardcoded value
+LDA #$FF					;max triangle settings
 
 CODE_FE55:
-JSR CODE_FABA					;generate sound
+JSR SetTriangleFrequencyAndLength_FABA		;generate sound
 
 RETURN_FE58:
-RTS						;
+RTS						;that's all, folks!
 
 ;first 9 bytes are offsets foreach Sound_Fanfare entry
 ;9? But there are only 8 valid values for fanfares! you may proclaim.
-;to which I say... yes. However, there's also Sound_Effect2_Dead, which is a two parter - the second part is considered to be fanfare and has dedicated tables and such.
-DATA_FE59:
-db $09,$0E,$13,$18,$1D,$22,$27,$2C,$31
+;to which I say... yes. However, there's also Sound_Effect2_PlayerDead, which is a two parter - the second part is considered to be fanfare and has dedicated tables and such.
+FanfareHeaders_FE59:
+db GameStartSoundHeader-FanfareHeaders_FE59
+db PhaseCompleteSoundHeader-FanfareHeaders_FE59
+db KongDefeatedSoundHeader-FanfareHeaders_FE59
+db PhaseStartSoundHeader-FanfareHeaders_FE59
+db KongFallingSoundHeader-FanfareHeaders_FE59
+db ScoreSoundHeader-FanfareHeaders_FE59
+db GamePauseSoundHeader-FanfareHeaders_FE59
+db TitleScreenThemeSoundHeader-FanfareHeaders_FE59
+db DeadPart2SoundHeader-FanfareHeaders_FE59
 
-
-;if the format is the same as in SMB, it's as follows:
-;1 byte - length byte offset
-;2 bytes - sound data address
+;Each fanfare has a header, with following format:
+;1 byte - note length lookup offset
+;2 bytes - sound data address, square 2 data (or square 1 for a couple of exceptions
 ;1 byte - triangle data offset
 ;1 byte - square 1 data offset
 
-db $00,<DATA_FE8F,>DATA_FE8F,<(DATA_FEAA-DATA_FE8F),$00
-db $08,<DATA_FEB0,>DATA_FEB0,$00,<(DATA_FEBC-DATA_FEB0)
-db $00,<DATA_FECF,>DATA_FECF,$00,<(DATA_FEE9-DATA_FECF)
-db $08,<DATA_FF05,>DATA_FF05,$00,<(DATA_FF10-DATA_FF05)
-db $00,<DATA_FFAD,>DATA_FFAD,$00,<(DATA_FFB0-DATA_FFAD)
-db $00,<DATA_FFBE,>DATA_FFBE,$00,$00
-db $00,<DATA_FFC4,>DATA_FFC4,$00,$00
-db $0F,<DATA_FF20,>DATA_FF20,<(DATA_FF41-DATA_FF20),<(DATA_FF5E-DATA_FF20) ;title screen theme uses both square and triangle
-db $00,<DATA_FFA1,>DATA_FFA1,<(DATA_FFA9-DATA_FFA1),$00		;dead part 2
+;if sound channel data offset is 0, that channel won't be used. square 2 is used for all tracks except for GameStart and DeadPart2, where square 1 is the primary channel
+
+GameStartSoundHeader:
+db $00
+dw GameStartSoundData_FE8F
+db GameStartTriangleData_FEAA-GameStartSoundData_FE8F	;<(DATA_FEAA-DATA_FE8F)
+db $00
+
+PhaseCompleteSoundHeader:
+db $08
+dw PhaseCompleteSoundData_FEB0
+db $00
+db PhaseCompleteSquare1Data_FEBC-PhaseCompleteSoundData_FEB0
+
+KongDefeatedSoundHeader:
+db $00
+dw KongDefeatedSoundData_FECF
+db $00
+db KongDefeatedSquare1Data_FEE9-KongDefeatedSoundData_FECF
+
+PhaseStartSoundHeader:
+db $08
+dw PhaseStartSoundData_FF05
+db $00
+db PhaseStartSquare1Data_FF10-PhaseStartSoundData_FF05
+
+KongFallingSoundHeader:
+db $00
+dw KongFallingSoundData_FFAD
+db $00
+db KongFallingSquare1Data_FFB0-KongFallingSoundData_FFAD
+
+ScoreSoundHeader:
+db $00
+dw ScoreSoundData_FFBE
+db $00
+db $00
+
+GamePauseSoundHeader:
+db $00
+dw GamePauseSoundData_FFC4
+db $00
+db $00
+
+;uses all channels
+TitleScreenThemeSoundHeader:
+db $0F
+dw TitleScreenThemeSoundData_FF20
+db TitleScreenThemeTriangleData_FF41-TitleScreenThemeSoundData_FF20
+db TitleScreenThemeSquare1Data_FF5E-TitleScreenThemeSoundData_FF20
+
+DeadPart2SoundHeader:
+db $00
+dw DeadPart2SoundData_FFA1
+db DeadPart2TriangleData_FFA9-DeadPart2SoundData_FFA1
+db $00
 
 ;Fanfare 1 - Game Start
 
-;Square. the only fanfare that uses square as primary channel, and not noise
-DATA_FE8F:
+;Square. Apparently, it's the only fanfare that has square ONE as primary channel, instead of square TWO
+GameStartSoundData_FE8F:
 db $86,$46,$82,$4A,$83,$26,$46,$80
 db $34,$32,$34,$32,$34,$32,$34,$32
 db $34,$32,$34,$32,$34,$32,$34,$32
 db $84,$34,$00
 
-;Triangle
-DATA_FEAA:
+GameStartTriangleData_FEAA:
 db $A9,$AC,$EE,$E8,$33,$35
 
 ;Fanfare 2 - Phase Complete
 
-;Noise
-DATA_FEB0:
+PhaseCompleteSoundData_FEB0:
 db $16,$16,$57,$1E,$20,$64,$9E,$1E
 db $20,$64,$9E,$00
 
-;Square
-DATA_FEBC:
+PhaseCompleteSquare1Data_FEBC:
 db $80,$30,$30,$85,$30,$80,$1A,$1C
 db $81,$1E,$82,$1A,$80,$1A,$1C,$81
 db $1E,$82,$1A
 
 ;Fanfare 3 - Kong Defeated (Ending Theme)
 
-;Noise
-DATA_FECF:
+KongDefeatedSoundData_FECF:
 db $5E,$5E,$5C,$5C,$5A,$5A,$58,$58
 db $57,$16,$18,$9A,$96,$59,$18,$1A
 db $9C,$98,$5F,$5E,$60,$5E,$5C,$5A
 db $1F,$00
 
-;Square
-DATA_FEE9:
+KongDefeatedSquare1Data_FEE9:
 db $81,$1A,$1A,$18,$18,$16,$16,$38
 db $38,$82,$26,$42,$26,$42,$28,$46
 db $28,$46,$30,$28,$30,$28,$81,$3A
@@ -12202,35 +12295,30 @@ db $85,$3C,$84,$3A
 
 ;Fanfare 4 - Phase Start
 
-;Noise
-DATA_FF05:
+PhaseStartSoundData_FF05:
 db $5E,$02,$20,$42,$4A,$42,$60,$5E
 db $60,$1D,$00
 
-;Square
-DATA_FF10:
+PhaseStartSquare1Data_FF10:
 db $82,$26,$42,$26,$42,$81,$40,$80
 db $42,$44,$48,$26,$28,$2C,$83,$2E
 
 ;Fanfare 8 - Title Theme
 
-;Noise
-DATA_FF20:
+TitleScreenThemeSoundData_FF20:
 db $56,$56,$E0,$42,$5A,$5E,$5C,$99
 db $58,$58,$E2,$42,$5E,$60,$5E,$9B
 db $5A,$5A,$CA,$42,$60,$62,$4A,$8D
 db $5C,$5E,$E0,$42,$5A,$5C,$5E,$1D
 db $00
 
-;Triangle
-DATA_FF41:
+TitleScreenThemeTriangleData_FF41:
 db $82,$6F,$6E,$EE,$71,$70,$F0,$77
 db $76,$F6,$57,$56,$D6,$A0,$9A,$96
 db $B4,$A2,$9C,$98,$B6,$5C,$9C,$96
 db $57,$5C,$96,$74,$2F
 
-;Square
-DATA_FF5E:
+TitleScreenThemeSquare1Data_FF5E:
 db $85,$02,$81,$2E,$34,$2E,$83,$34
 db $81,$48,$28,$30,$28,$30,$28,$85
 db $30,$81,$30,$36,$30,$83,$36,$81
@@ -12243,48 +12331,58 @@ db $30,$86,$2E
 
 ;Fanfare 9 - Death
 
-;Noise
-DATA_FFA1:
+DeadPart2SoundData_FFA1:
 db $81,$1A,$82,$1E,$30,$83,$16,$00
 
-;Triangle
-DATA_FFA9:
+DeadPart2TriangleData_FFA9:
 db $42,$96,$B0,$E6
 
 ;Fanfare 5 - Kong is Falling
 
-;Noise
-DATA_FFAD:
+KongFallingSoundData_FFAD:
 db $03,$83,$00
 
-;Square
-DATA_FFB0:
+KongFallingSquare1Data_FFB0:
 db $87,$42,$3E,$42,$3E,$42,$3E,$42
 db $3E,$42,$3E,$42,$82,$3E
 
 ;Fanfare 6 - Score
 
-;Noise
-DATA_FFBE:
+ScoreSoundData_FFBE:
 db $0A,$0C,$0E,$54,$90,$00
 
 ;Fanfare 7 - Pause sound
 
-;Noise
-DATA_FFC4:
+GamePauseSoundData_FFC4:
 db $04,$12,$04,$12,$04,$12,$04,$92
 db $00      
 
-;all seem to be used but idk
-DATA_FFCD:
-db $00,$00,$00,$00,$09,$0E,$12
+;music data starts here
+MusicDataOffsets_FFCD:
+db Phase25MMusicData_FFD4-MusicData_FFD4	;25M theme
+db Phase25MMusicData_FFD4-MusicData_FFD4	;\
+db Phase25MMusicData_FFD4-MusicData_FFD4	;|duplicates of 25M
+db Phase25MMusicData_FFD4-MusicData_FFD4	;/
+db Phase100MMusicData_FFDD-MusicData_FFD4	;100M theme
+db HurryUpMusicData_FFE2-MusicData_FFD4		;HURRY UP!!!
+db HammerMusicData_FFE6-MusicData_FFD4		;hammer theme
+;8th song doesn't exist, it will erroneously use the next byte from the actual music table (which happens to place it just a little after the beginning of the hammer theme)
 
-DATA_FFD4:
+MusicData_FFD4:
+Phase25MMusicData_FFD4:
 db $16,$02,$02,$1A,$02,$1E,$20,$1E
-db $00,$5A,$42,$56,$56,$00,$09,$07
-db $05,$00,$CA,$8A,$8A,$CA,$CA,$CE
-db $CA,$CE,$CA,$CE,$8E,$8E,$CE,$CE
-db $D2,$CE,$D2,$CE,$00
+db $00
+
+Phase100MMusicData_FFDD:
+db $5A,$42,$56,$56,$00
+
+HurryUpMusicData_FFE2:
+db $09,$07,$05,$00
+
+HammerMusicData_FFE6:
+db $CA,$8A,$8A,$CA,$CA,$CE,$CA,$CE
+db $CA,$CE,$8E,$8E,$CE,$CE,$D2,$CE
+db $D2,$CE,$00
 
 ;only a single byte of freespace is here. YAY!
 
